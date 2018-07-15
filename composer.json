@@ -1,5 +1,5 @@
 {
-    "name": "carson/msfoole",
+    "name": "julibo/msfoole",
     "description": "基于swoole的简易微服务框架",
     "type": "library",
     "keywords": [
