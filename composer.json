@@ -33,7 +33,6 @@
     },
     "autoload": {
         "psr-4": {
-            "App\\": "\\",
             "Msfoole\\": "src\\"
 
         }
@@ -44,6 +43,6 @@
         "process-timeout": 1800,
         "vendor-dir": "vendor"
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
