@@ -1,6 +1,6 @@
 {
     "name": "julibo/msfoole",
-    "description": "基于swoole的简易微服务框架",
+    "description": "基于swoole的微服务简易框架",
     "type": "library",
     "keywords": [
         "msfoole",
@@ -33,15 +33,14 @@
     },
     "autoload": {
         "psr-4": {
-            "Msfoole\\": "src\\"
-
-        }
+            "Julibo\\Msfoole\\": "src\\"
+        },
+        "files": [
+            "src/base.php",
+            "src/helper.php"
+        ]
     },
     "extra": {
-    },
-    "config": {
-        "process-timeout": 1800,
-        "vendor-dir": "vendor"
     },
     "minimum-stability": "dev",
     "prefer-stable": true
