@@ -30,11 +30,11 @@
         "symfony/console": "~4.1.6",
         "monolog/monolog": "~1.23.0",
         "topthink/think-orm": "~1.2.13",
-        "topthink/think-log": "~1.0",
-        "topthink/think-cache": "~1.0",
-        "topthink/think-container": "~1.0",
-        "topthink/think-helper": "~1.0.6",
-        "topthink/think-validate": "～1.0.1"
+        "topthink/think-log": "dev-master",
+        "topthink/think-cache": "dev-master",
+        "topthink/think-container": "dev-master",
+        "topthink/think-helper": "dev-master",
+        "topthink/think-validate": "dev-master"
         
     },
     "require-dev" : {},
