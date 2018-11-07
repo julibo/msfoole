@@ -1,0 +1,6 @@
+name: msfoole
+version: 0.0.1
+description: 基于swoole的简易微服务框架
+environments:
+  CACHE__DEFAULT__PASSWORD: root3306
+  CACHE__DEFAULT__DATABASE: 8

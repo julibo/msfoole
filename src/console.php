@@ -8,30 +8,21 @@
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
-// | 命令行接口
+// | 命令行引导文件
 // +----------------------------------------------------------------------
-namespace Julibo\Msfoole\Interfaces;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+namespace Julibo\Msfoole;
 
-interface Console
-{
-    /**
-     * 初始化工程
-     */
-    public function init();
+// 加载基础文件
+require __DIR__ . '/base.php';
 
-    /**
-     * 进程配置
-     */
-    public function configure();
+use Julibo\Msfoole\Commands\Task;
+use Symfony\Component\Console\Application;
 
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-}
+$task = new Task();
+
+
+
+//$application = new Application();
+//$application->add($task);
+//$application->run();

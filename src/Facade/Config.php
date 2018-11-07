@@ -8,30 +8,22 @@
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
-// | 命令行接口
+// | Config 静态代理类
 // +----------------------------------------------------------------------
-namespace Julibo\Msfoole\Interfaces;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+namespace Julibo\Msfoole\Facade;
 
-interface Console
+use think\Facade;
+
+class Config extends Facade
 {
     /**
-     * 初始化工程
+     * 获取当前Facade对应类名（或者已经绑定的容器对象标识）
+     * @access protected
+     * @return string
      */
-    public function init();
-
-    /**
-     * 进程配置
-     */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
+    protected static function getFacadeClass()
+    {
+        return 'Julibo\Msfoole\Config';
+    }
 }
