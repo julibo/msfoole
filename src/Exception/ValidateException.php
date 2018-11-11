@@ -1,5 +1,5 @@
 <?php
-namespace Julibo\Smfoole\Exception;
+namespace Julibo\Msfoole\Exception;
 
 class ValidateException extends \RuntimeException
 {

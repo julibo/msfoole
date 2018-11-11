@@ -8,12 +8,15 @@
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
-// | 异常处理类
+// | 错误处理类
 // +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole;
 
 use Julibo\Msfoole\Exception\ErrorException;
 use Julibo\Msfoole\Exception\ThrowableError;
+use Julibo\Msfoole\Exception\Handle;
+use Julibo\Msfoole\Facade\Log;
 
 class Error
 {
@@ -37,6 +40,18 @@ class Error
     }
 
     /**
+     * 确定错误类型是否致命
+     *
+     * @access protected
+     * @param  int $type
+     * @return bool
+     */
+    protected static function isFatal($type)
+    {
+        return in_array($type, [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE]);
+    }
+
+    /**
      * Exception Handler
      * @access public
      * @param  \Exception|\Throwable $e
@@ -46,8 +61,30 @@ class Error
         if (!$e instanceof \Exception) {
             $e = new ThrowableError($e);
         }
+        
+        self::getExceptionHandler()->report($e);
 
-        var_dump("我异常了：", $e);
+        if (PHP_SAPI == 'cli') {
+            self::getExceptionHandler()->renderForConsole($e);
+        } else {
+            self::getExceptionHandler()->render($e);
+        }
+    }
+
+    /**
+     * Shutdown Handler
+     * @access public
+     */
+    public static function appShutdown()
+    {
+        if (!is_null($error = error_get_last()) && self::isFatal($error['type'])) {
+            // 将错误信息托管至Julibo\Msfoole\Exception\ErrorException
+            $exception = new ErrorException($error['type'], $error['message'], $error['file'], $error['line']);
+
+            self::appException($exception);
+        }
+        // 写入日志
+        Log::save();
     }
 
     /**
@@ -63,35 +100,47 @@ class Error
     {
         $exception = new ErrorException($errno, $errstr, $errfile, $errline);
         if (error_reporting() & $errno) {
-            // 将错误信息托管至 think\exception\ErrorException
-            var_dump("我错了");
+            // 将错误信息托管至 Julibo\Msfoole\Exception\ErrorException
             throw $exception;
         }
+        # 其他错误处理
+       self::getExceptionHandler()->report($exception);
     }
 
     /**
-     * Shutdown Handler
-     * @access public
-     */
-    public static function appShutdown()
-    {
-        if (!is_null($error = error_get_last()) && self::isFatal($error['type'])) {
-            // 将错误信息托管至think\ErrorException
-            $exception = new ErrorException($error['type'], $error['message'], $error['file'], $error['line']);
-            var_dump("我中止了");
-            self::appException($exception);
-        }
-    }
-
-    /**
-     * 确定错误类型是否致命
+     * 设置异常处理类
      *
-     * @access protected
-     * @param  int $type
-     * @return bool
+     * @access public
+     * @param  mixed $handle
+     * @return void
      */
-    protected static function isFatal($type)
+    public static function setExceptionHandler($handle)
     {
-        return in_array($type, [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE]);
+        self::$exceptionHandler = $handle;
+    }
+
+    /**
+     * Get an instance of the exception handler.
+     *
+     * @access public
+     * @return Handle
+     */
+    public static function getExceptionHandler()
+    {
+        static $handle;
+        if (!$handle) {
+            // 异常处理handle
+            $class = self::$exceptionHandler;
+            if ($class && is_string($class) && class_exists($class) && is_subclass_of($class, "\\Julibo\\Msfoole\\Exception\\Handle")) {
+                $handle = new $class;
+            } else {
+                $handle = new Handle;
+                if ($class instanceof \Closure) {
+                    $handle->setRender($class);
+                }
+            }
+        }
+        return $handle;
     }
 }
+

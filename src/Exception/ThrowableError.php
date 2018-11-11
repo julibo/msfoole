@@ -1,5 +1,15 @@
 <?php
-namespace Julibo\Smfoole\Exception;
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的简易微服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
+namespace Julibo\Msfoole\Exception;
 
 class ThrowableError extends \ErrorException
 {

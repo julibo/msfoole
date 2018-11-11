@@ -1,5 +1,5 @@
 <?php
-namespace Julibo\Smfoole\Exception;
+namespace Julibo\Msfoole\Exception;
 
 use Julibo\Msfoole\Exception;
 

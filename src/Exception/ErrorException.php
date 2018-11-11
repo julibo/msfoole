@@ -1,7 +1,17 @@
 <?php
-namespace Julibo\Smfoole\Exception;
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的简易微服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
 
-use Julibo\Smfoole\Exception;
+namespace Julibo\Msfoole\Exception;
+
+use Julibo\Msfoole\Exception;
 
 class ErrorException extends Exception
 {
@@ -38,3 +48,4 @@ class ErrorException extends Exception
         return $this->severity;
     }
 }
+

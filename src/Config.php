@@ -57,14 +57,17 @@ class Config
     /**
      * 获取配置参数 为空则获取所有配置
      */
-    public function get($name = null, $default = null)
+    public function get($name = null, $default = null, $case = false)
     {
+        $config = $this->config;
         // 无参数时获取所有
         if (empty($name)) {
-            return $this->config;
+            if (!$case) {
+                $this->changeKeyCase($config);
+            }
+            return $config;
         }
         $name = explode('.', strtoupper($name));
-        $config = $this->config;
         // 按.拆分成多维数组进行判断
         foreach ($name as $val) {
             if (isset($config[$val])) {
@@ -72,6 +75,9 @@ class Config
             } else {
                 return $default;
             }
+        }
+        if (!$case && is_array($config)) {
+            $this->changeKeyCase($config);
         }
         return $config;
     }
@@ -130,9 +136,25 @@ class Config
         foreach ($files as $file) {
             if (file_exists($file)) {
                 $object = Loader::factory($type, '\\Julibo\\Msfoole\\Config\\Driver\\', $file);
-            }
-            $this->set($object->parse());
+                $this->set($object->parse());
+            } 
         }
+    }
+
+    /**
+     * 加载配置文件夹配置项
+     */
+    public function loadConfig($conf, $type = '.ini')
+    {
+        // 配置文件解析
+        if (!is_dir($conf)) {
+            throw new \Exception("项目配置文件夹不存在");
+        }
+        $files = glob($conf . '*' . $type);
+        if (empty($files)) {
+            throw new \Exception("项目配置文件不存在");
+        }
+        $this->loadFile($files, $type);        
     }
 
     /**
@@ -152,21 +174,40 @@ class Config
         } else if (is_array($name)) {
             $list = $name;
         }
-        foreach ($list as $key => $value) {
+        foreach ($list as $key => $v) {
             if (false !== strpos($key, '.')) {
                 $split = '.';
             } else {
                 $split = '__';
             }
             $key = explode($split, strtoupper($key), 3);
+            // 优先读取系统环境变量
+            $value = getenv(implode('__', $key)) ?: $v;
+            if (false !== strpos($value, ',')) {
+                $value = explode(',', $value);
+            }
             if (count($key) == 3) {
                 $this->config[$key[0]][$key[1]][$key[2]] = $value;
-            } else if (count($name) == 2) {
+            } else if (count($key) == 2) {
                 $this->config[$key[0]][$key[1]] = $value;
             } else {
                 $this->config[$key[0]] = $value;
             }
         }
         return $this->config;
+    }
+
+    /**
+     * 将数组键名改写为小写格式
+     * @param $config
+     */
+    public function changeKeyCase(&$config)
+    {
+        $config = array_change_key_case($config);
+        foreach ($config as $key => $value) {
+            if ( is_array($value) ) {
+                $this->changeKeyCase($config[$key]);
+            }
+        }
     }
 }

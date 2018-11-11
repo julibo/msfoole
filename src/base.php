@@ -34,20 +34,13 @@ define('IS_WIN', strpos(PHP_OS, 'WIN') !== false);
 require ROOT_PATH . 'vendor/autoload.php';
 
 // 注册错误和异常处理机制
-# \Julibo\Msfoole\Error::register();
+\Julibo\Msfoole\Error::register();
 
 // 加载项目默认配置
 \Julibo\Msfoole\Facade\Config::loadFile(__DIR__ . '/project.yml', ENV_EXT);
 
 // 配置文件解析
-if (!is_dir(CONF_PATH)) {
-    throw new \Exception("项目配置文件夹不存在");
-}
-$files = glob(CONF_PATH . '*' . CONF_EXT);
-if (empty($files)) {
-    throw new \Exception("项目配置文件不存在");
-}
-\Julibo\Msfoole\Facade\Config::loadFile($files, CONF_EXT);
+\Julibo\Msfoole\Facade\Config::loadConfig(CONF_PATH, CONF_EXT);
 
 // 非命令行下根据常量配置和环境变量加载对应环境配置文件
 if (!IS_CLI) {
@@ -57,6 +50,10 @@ if (!IS_CLI) {
     if (!file_exists($file)) {
         throw new \Exception("环境配置文件不存在");
     }
-
     \Julibo\Msfoole\Facade\Config::loadFile($file, ENV_EXT);
 }
+
+// 日志初始化
+$logConfig = \Julibo\Msfoole\Facade\Config::get("log") ?? [];
+\Julibo\Msfoole\Facade\Log::init($logConfig);
+
