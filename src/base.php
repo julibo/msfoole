@@ -26,6 +26,7 @@ defined('CONF_EXT') or define('CONF_EXT', '.ini');
 defined('ENV_EXT') or define('ENV_EXT', '.yml');
 defined('RUN_ENV') or define('RUN_ENV', 'DEV');
 defined('GOAL_ENV') or define('GOAL_ENV', 'MSFOOLE_RUNTIME');
+defined('SERVER_PID') or define('SERVER_PID', TEMP_PATH . 'msfoole.pid');
 
 // 环境常量
 define('IS_CLI', PHP_SAPI == 'cli' ? true : false);
