@@ -48,7 +48,17 @@ class WebSocketFrame implements \ArrayAccess
 
     public function getArgs()
     {
-        return isset($this->data['arguments']) ? $this->data['arguments'] : null;
+        return isset($this->data['arguments']) ?? null;
+    }
+
+    public function getModule()
+    {
+        return empty($this->data['module']) ? strtoupper($this->data['module']) : 'Index';
+    }
+
+    public function getMethod()
+    {
+        return empty($this->data['method']) ? strtoupper($this->data['method']) : 'Index';
     }
 
     public function __call($method, $params)
@@ -56,14 +66,8 @@ class WebSocketFrame implements \ArrayAccess
         return call_user_func_array([$this->server, $method], $params);
     }
 
-    public function pushToClient($data, $event = true)
+    public function pushToClient($data)
     {
-        if ($event) {
-            $eventname = isset($this->data['event']) ? $this->data['event'] : false;
-            if ($eventname) {
-                $data['event'] = $eventname;
-            }
-        }
         $this->sendToCllient($this->frame->fd, $data);
     }
 
@@ -104,3 +108,4 @@ class WebSocketFrame implements \ArrayAccess
     }
 
 }
+

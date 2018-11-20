@@ -19,8 +19,8 @@ class AloneHttpServer extends BaseServer
         'Start',
         'Close',
         'Request',
-        'Message',
         'Open',
+        'Message',
     ];
 
     protected function init()
@@ -61,6 +61,13 @@ class AloneHttpServer extends BaseServer
         $this->app  = new Application();
         $this->app->swooleHttp($request, $response);
     }
+
+
+    public function WebsocketonOpen(Websocket $server, SwooleRequest $request)
+    {
+        var_dump($request);
+    }
+
     /**
      * Message回调
      * @param $server
@@ -68,20 +75,14 @@ class AloneHttpServer extends BaseServer
      */
     public function WebsocketonMessage(Websocket $server, Webframe $frame)
     {
-        echo "receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}\n";
+        // echo "receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}\n";
         // 执行应用并响应
         $this->app  = new Application();
         $this->app->swooleWebSocket($server, $frame);
     }
 
-    public function WebsocketonOpen(Websocket $server, SwooleRequest $request)
-    {
-        var_dump($request);
-    }
 
 
 
 
 }
-
-

@@ -101,11 +101,9 @@ class InitialServer extends Command implements Console
     private function setEnvConfig($env)
     {
         $file = CONF_PATH . 'php-' . strtolower($env) . ENV_EXT;
-        if (!file_exists($file)) {
-            $this->output->writeln("<error>环境配置文件不存在</error>");
-            exit(3);
+        if (file_exists($file)) {
+            Config::loadFile($file, ENV_EXT);
         }
-        Config::loadFile($file, ENV_EXT);
     }
 
     private function getHost()
@@ -234,7 +232,7 @@ class InitialServer extends Command implements Console
     }
 
     /**
-     * 服务启动
+     * 服务重载
      */
     private function reload()
     {

@@ -2,8 +2,7 @@
 namespace Julibo\Msfoole;
 
 
-class Request
+class HttpRequest
 {
-
 
 }
