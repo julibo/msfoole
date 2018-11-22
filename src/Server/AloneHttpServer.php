@@ -65,7 +65,8 @@ class AloneHttpServer extends BaseServer
 
     public function WebsocketonOpen(Websocket $server, SwooleRequest $request)
     {
-        var_dump($request);
+        $this->app  = new Application();
+        $this->app->swooleWebSocketOpen($server, $request);
     }
 
     /**
@@ -86,3 +87,4 @@ class AloneHttpServer extends BaseServer
 
 
 }
+

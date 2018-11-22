@@ -2,7 +2,7 @@
 
 namespace Julibo\Msfoole;
 
-use Swoole\Http\Request;
+use Swoole\Http\Request as SwooleRequest;
 use Swoole\Http\Response;
 use Swoole\Websocket\Server as Websocket;
 use Swoole\WebSocket\Frame as Webframe;
@@ -15,6 +15,20 @@ class Application
     private $beginMem;
     private $request;
     private $websocketFrame;
+
+
+    /**
+     * webSocket连接开启
+     * @param Websocket $server
+     * @param SwooleRequest $request
+     */
+    public function swooleWebSocketOpen(Websocket $server, SwooleRequest $request)
+    {
+        $this->request = WebSocketRequest::getInstance($request);
+        $this->request->getParam['code'];
+
+        var_dump($this->request);
+    }
 
     /**
      * 处理websocket请求
@@ -29,31 +43,9 @@ class Application
             $this->beginMem  = memory_get_usage();
             WebSocketFrame::destroy();
             $this->websocketFrame = WebSocketFrame::getInstance($server, $frame);
-
-            $request = json_decode($frame->data, true);
-            $_COOKIE                    = isset($request['arguments']['cookie']) ? $request['arguments']['cookie'] : [];
-            $_GET                       = isset($request['arguments']['get']) ? $request['arguments']['get'] : [];
-            $_POST                      = isset($request['arguments']['post']) ? $request['arguments']['post'] : [];
-            $_FILES                     = isset($request['arguments']['files']) ? $request['arguments']['files'] : [];
-            $_SERVER["PATH_INFO"]       = $request['url'] ?: '/';
-            $_SERVER["REQUEST_URI"]     = $request['url'] ?: '/';
-            $_SERVER["SERVER_PROTOCOL"] = 'http';
-            $_SERVER["REQUEST_METHOD"]  = 'post';
-
-            // 重新实例化请求对象 处理swoole请求数据
-            $this->request = new WebSocketRequest();
-            $this->request->withServer($_SERVER)
-                ->withGet($_GET)
-                ->withPost($_POST)
-                ->withCookie($_COOKIE)
-                ->withInput($request->rawContent())
-                ->withFiles($_FILES)
-                ->setBaseUrl($request->server['request_uri'])
-                ->setUrl($request->server['request_uri'] . (!empty($request->server['query_string']) ? '&' . $request->server['query_string'] : ''))
-                ->setHost($request->header['host'])
-                ->setPathinfo(ltrim($request->server['path_info'], '/'));
-
-            $data = $this->run();
+            $server->push($frame->fd, $frame->data);
+//            $request = json_decode($frame->data, true);
+//            $data = $this->run();
 
 
         } catch (\Throwable $e) {

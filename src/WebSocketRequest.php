@@ -6,36 +6,48 @@ use Swoole\Http\Request as SwooleRequest;
 class WebSocketRequest
 {
 
+    private static $websocketRequest = [];
+
     private $fd;
 
     private $header;
 
     private $server;
 
+    private $request;
+
+    private $cookie;
+
     private $get;
 
     private $post;
 
-    private $cookie;
+    private $files;
+
+    private $tmpfiles;
 
     private $input;
 
     private $filter;
 
-    private $baseUrl;
+    private $origin;
 
-    private $url;
+    private $key;
 
-    private $host;
+    private $query_string;
 
-    private $pathinfo;
+    private $request_method;
+
+    private $request_uri;
+
+    private $path_info;
 
     private $config = [
         // 默认全局过滤方法 用逗号分隔多个
         'default_filter'   => '',
     ];
 
-    public function __construct(array $options = [])
+    private function __construct(SwooleRequest $request, array $options = [])
     {
         $this->config = array_merge($this->config, $options);
 
@@ -44,6 +56,43 @@ class WebSocketRequest
         }
         // 保存 php://input
         $this->input = file_get_contents('php://input');
+
+         $this->withFd($request->fd)
+         ->withHeader($request->header)
+         ->withServer($request->server)
+         ->withGet($request->get);
+    }
+
+    public static function getInstance(SwooleRequest $request, array $options = [])
+    {
+        if (empty(self::$websocketRequest[$request->fd])) {
+            self::$websocketRequest[$request->fd] = new static($request, $options);
+        }
+        return self::$websocketRequest[$request->fd];
+    }
+
+    /**
+     * 设置客户端ID
+     * @param int $fd
+     * @return $this
+     */
+    public function withFd($fd)
+    {
+        $this->fd = $fd;
+        return $this;
+    }
+
+    /**
+     * 设置头部信息
+     * @param array $header
+     * @return $this
+     */
+    public function withHeader(array $header)
+    {
+        $this->header = array_change_key_case($header);
+        $this->origin = $this->header['origin'];
+        $this->key = $this->header['sec-websocket-key'];
+        return $this;
     }
 
     /**
@@ -54,7 +103,22 @@ class WebSocketRequest
      */
     public function withServer(array $server)
     {
-        $this->server = array_change_key_case($server, CASE_UPPER);
+        $this->server = array_change_key_case($server);
+        $this->query_string = $this->server['query_string'];
+        $this->request_method = $this->server['request_method'];
+        $this->request_uri = $this->server['request_uri'];
+        $this->path_info = $this->server['path_info'];
+        return $this;
+    }
+
+    /**
+     * 设置request数据
+     * @param array $request
+     * @return $this
+     */
+    public function withRequest($request)
+    {
+        $this->request = $request;
         return $this;
     }
 
@@ -64,7 +128,7 @@ class WebSocketRequest
      * @param  array $get 数据
      * @return $this
      */
-    public function withGet(array $get)
+    public function withGet($get)
     {
         $this->get = $get;
         return $this;
@@ -76,7 +140,7 @@ class WebSocketRequest
      * @param  array $post 数据
      * @return $this
      */
-    public function withPost(array $post)
+    public function withPost($post)
     {
         $this->post = $post;
         return $this;
@@ -88,21 +152,9 @@ class WebSocketRequest
      * @param  array $cookie 数据
      * @return $this
      */
-    public function withCookie(array $cookie)
+    public function withCookie($cookie)
     {
         $this->cookie = $cookie;
-        return $this;
-    }
-
-    /**
-     * 设置php://input数据
-     * @access public
-     * @param  string $input RAW数据
-     * @return $this
-     */
-    public function withInput($input)
-    {
-        $this->input = $input;
         return $this;
     }
 
@@ -112,55 +164,23 @@ class WebSocketRequest
      * @param  array $files 上传信息
      * @return $this
      */
-    public function withFiles(array $files)
+    public function withFiles($files)
     {
-        $this->file = $files;
+        $this->files = $files;
         return $this;
     }
 
     /**
-     * 设置当前完整URL 不包括QUERY_STRING
+     * 设置临时文件数据
      * @access public
-     * @param  string $url URL
+     * @param  array $tmpfiles
      * @return $this
      */
-    public function setBaseUrl($url)
+    public function withTmpFiles($tmpfiles)
     {
-        $this->baseUrl = $url;
+        $this->tmpfiles = $tmpfiles;
         return $this;
     }
-
-    /**
-     * 设置当前完整URL 包括QUERY_STRING
-     * @access public
-     * @param  string $url URL
-     * @return $this
-     */
-    public function setUrl($url)
-    {
-        $this->url = $url;
-        return $this;
-    }
-
-    /**
-     * 设置当前请求的host（包含端口）
-     * @access public
-     * @param  string $host 主机名（含端口）
-     * @return $this
-     */
-    public function setHost($host)
-    {
-        $this->host = $host;
-
-        return $this;
-    }
-
-    public function setPathinfo($pathinfo)
-    {
-        $this->pathinfo = $pathinfo;
-        return $this;
-    }
-
 
     public function getFd()
     {
@@ -190,5 +210,4 @@ class WebSocketRequest
         }
         return $this->get[$name] ?? null;
     }
-
 }
