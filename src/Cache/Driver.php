@@ -15,18 +15,6 @@ abstract class Driver
     protected $handler = null;
 
     /**
-     * 缓存读取次数
-     * @var int
-     */
-    protected $readTime = 0;
-
-    /**
-     * 缓存写入次数
-     * @var int
-     */
-    protected $writeTime = 0;
-
-    /**
      * 缓存参数
      * @var array
      */
@@ -77,27 +65,13 @@ abstract class Driver
      * @param $name
      * @return mixed
      */
-    abstract public function rm($name);
+    abstract public function del($name);
 
     /**
-     * 清除缓存
-     * @param $tag 标签名
+     * 清空缓存
      * @return mixed
      */
-    abstract public function clear($tag = null);
-
-    /**
-     * 获取有效期
-     * @param $expire 有效期
-     * @return int
-     */
-    protected function getExpireTime($expire)
-    {
-        if ($expire instanceof \DateTime) {
-            $expire = $expire->getTimestamp() - time();
-        }
-        return $expire;
-    }
+    abstract public function clear();
 
     /**
      * 获取实际缓存标识
@@ -118,7 +92,7 @@ abstract class Driver
     {
         $result = $this->get($name, false);
         if ($result) {
-            $this->rm($name);
+            $this->del($name);
             return $result;
         } else {
             return;
@@ -133,18 +107,4 @@ abstract class Driver
     {
         return $this->handler;
     }
-
-    public function getReadTimes()
-    {
-        return $this->readTime;
-    }
-
-    public function getWriteTimes()
-    {
-        return $this->writeTime;
-    }
-
-
-
-
 }

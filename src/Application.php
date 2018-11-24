@@ -3,7 +3,7 @@
 namespace Julibo\Msfoole;
 
 use Swoole\Http\Request as SwooleRequest;
-use Swoole\Http\Response;
+use Swoole\Http\Response as SwooleResponse;
 use Swoole\Websocket\Server as Websocket;
 use Swoole\WebSocket\Frame as Webframe;
 use Julibo\Msfoole\Facade\Config;
@@ -17,7 +17,7 @@ class Application
 
     public $swoole;
     public $table;
-    public $cacheTable;
+    public $cache;
 
     private $request;
 
@@ -29,7 +29,7 @@ class Application
 
     public function initialize()
     {
-        # todo
+
     }
 
     /**
@@ -165,12 +165,10 @@ class Application
 
     /**
      * 处理http请求
-     * @access public
-     * @param  \Swoole\Http\Request $request
-     * @param  \Swoole\Http\Response $response
-     * @param  void
+     * @param SwooleRequest $request
+     * @param SwooleResponse $response
      */
-    public function swooleHttp(Request $request, Response $response)
+    public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
         try {
             // 重置应用的开始时间和内存占用

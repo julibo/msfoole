@@ -9,6 +9,7 @@ use Swoole\WebSocket\Frame as Webframe;
 use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Cache;
 
 
 class AloneHttpServer extends BaseServer
@@ -35,7 +36,7 @@ class AloneHttpServer extends BaseServer
 
     private $table;
 
-    private $cacheTable;
+    private $cache;
 
     public function createTable()
     {
@@ -50,15 +51,17 @@ class AloneHttpServer extends BaseServer
 
     protected function init()
     {
-        # todo
-        # $this->option['upload_tmp_dir'] = TEMP_PATH;
-        # $this->option['http_parse_post'] = true;
+        $this->option['upload_tmp_dir'] = TEMP_PATH;
+        $this->option['http_parse_post'] = true;
     }
 
     protected function startLogic()
     {
         # 创建内存表
         $this->createTable();
+        # 开启缓存
+        $cacheConfig = Config::get('cache.default') ?? [];
+        $this->cache = new Cache($cacheConfig);
     }
 
     public function onStart(\Swoole\Server $server)
@@ -84,11 +87,10 @@ class AloneHttpServer extends BaseServer
     public function onWorkerStart(\Swoole\Server $server, int $worker_id)
     {
         // 应用实例化
-        $this->app       = new Application();
+        $this->app = new Application();
         // Swoole Server保存到容器
         $this->app->swoole = $server;
-        # todo
-        # $this->app->cacheTable = $this->cacheTable;
+        $this->app->cache = $this->cache;
         if ($this->table) {
             $this->app->table = $this->table;
         }
@@ -138,6 +140,7 @@ class AloneHttpServer extends BaseServer
      */
     public function WebsocketonOpen(Websocket $server, SwooleRequest $request)
     {
+        // print_r($request);
         $this->app->swooleWebSocketOpen($server, $request);
     }
 

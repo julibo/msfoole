@@ -1,7 +1,7 @@
 <?php
 namespace Julibo\Msfoole;
 
-use think\facade\Config;
+use Julibo\Msfoole\Facade\Config;
 
 class CacheTable
 {
@@ -9,11 +9,10 @@ class CacheTable
 
     public function __construct()
     {
-        $cache_size      = Config::get('swoole.cache_size') ?: 1024;
-        $cache_data_size = Config::get('swoole.cache_data_size') ?: 1024 * 1024;
-
+        $cache_size      = Config::get('msfoole.cache.size') ?: 1024;
+        $cache_data_size = Config::get('msfoole.cache.data_size') ?: 1024 * 8;
         $this->table = new \swoole\table($cache_size);
-        $this->table->column('time', \swoole\table::TYPE_INT, 15);
+        $this->table->column('time', \swoole\table::TYPE_INT, 4);
         $this->table->column('data', \swoole\table::TYPE_STRING, $cache_data_size);
         $this->table->create();
     }
@@ -25,22 +24,22 @@ class CacheTable
 
     public function set($key, $value)
     {
-        $this->table->set($key, ['time' => 0, 'data' => $value]);
+        return $this->table->set($key, ['time' => 0, 'data' => $value]);
     }
 
     public function setex($key, $expire, $value)
     {
-        $this->table->set($key, ['time' => time() + $expire, 'data' => $value]);
+        return $this->table->set($key, ['time' => time() + $expire, 'data' => $value]);
     }
 
     public function incr($key, $column, $incrby = 1)
     {
-        $this->table->incr($key, $column, $incrby);
+        return $this->table->incr($key, $column, $incrby);
     }
 
     public function decr($key, $column, $decrby = 1)
     {
-        $this->table->decr($key, $column, $decrby);
+        return $this->table->decr($key, $column, $decrby);
     }
 
     public function get($key, $field = null)
@@ -52,7 +51,8 @@ class CacheTable
         if (0 == $data['time']) {
             return $data['data'];
         }
-        if (0 <= $data['time'] && $data['time'] >= time()) {
+        if (0 <= $data['time'] && $data['time'] < time()) {
+            $this->del($key);
             return false;
         }
         return $data['data'];
