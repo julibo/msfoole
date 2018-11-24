@@ -10,29 +10,17 @@ class WebSocketRequest
 
     private $fd;
 
+    private $token;
+
     private $header;
 
     private $server;
 
-    private $request;
-
-    private $cookie;
-
     private $get;
-
-    private $post;
-
-    private $files;
-
-    private $tmpfiles;
-
-    private $input;
 
     private $filter;
 
     private $origin;
-
-    private $key;
 
     private $query_string;
 
@@ -44,7 +32,7 @@ class WebSocketRequest
 
     private $config = [
         // 默认全局过滤方法 用逗号分隔多个
-        'default_filter'   => '',
+        'default_filter' => '',
     ];
 
     private function __construct(SwooleRequest $request, array $options = [])
@@ -54,13 +42,11 @@ class WebSocketRequest
         if (is_null($this->filter) && !empty($this->config['default_filter'])) {
             $this->filter = $this->config['default_filter'];
         }
-        // 保存 php://input
-        $this->input = file_get_contents('php://input');
 
-         $this->withFd($request->fd)
-         ->withHeader($request->header)
-         ->withServer($request->server)
-         ->withGet($request->get);
+        $this->withFd($request->fd)
+            ->withHeader($request->header)
+            ->withServer($request->server)
+            ->withGet($request->get);
     }
 
     public static function getInstance(SwooleRequest $request, array $options = [])
@@ -69,6 +55,13 @@ class WebSocketRequest
             self::$websocketRequest[$request->fd] = new static($request, $options);
         }
         return self::$websocketRequest[$request->fd];
+    }
+
+    public static function destroy(self $request)
+    {
+        $fd = $request->getFd();
+        if ($fd && isset(self::$websocketRequest[$fd]))
+            unset(self::$websocketRequest[$fd]);
     }
 
     /**
@@ -91,7 +84,6 @@ class WebSocketRequest
     {
         $this->header = array_change_key_case($header);
         $this->origin = $this->header['origin'];
-        $this->key = $this->header['sec-websocket-key'];
         return $this;
     }
 
@@ -112,17 +104,6 @@ class WebSocketRequest
     }
 
     /**
-     * 设置request数据
-     * @param array $request
-     * @return $this
-     */
-    public function withRequest($request)
-    {
-        $this->request = $request;
-        return $this;
-    }
-
-    /**
      * 设置GET数据
      * @access public
      * @param  array $get 数据
@@ -135,50 +116,13 @@ class WebSocketRequest
     }
 
     /**
-     * 设置POST数据
-     * @access public
-     * @param  array $post 数据
+     * 设置Token
+     * @param $token
      * @return $this
      */
-    public function withPost($post)
+    public function setToken($token)
     {
-        $this->post = $post;
-        return $this;
-    }
-
-    /**
-     * 设置COOKIE数据
-     * @access public
-     * @param  array $cookie 数据
-     * @return $this
-     */
-    public function withCookie($cookie)
-    {
-        $this->cookie = $cookie;
-        return $this;
-    }
-
-    /**
-     * 设置文件上传数据
-     * @access public
-     * @param  array $files 上传信息
-     * @return $this
-     */
-    public function withFiles($files)
-    {
-        $this->files = $files;
-        return $this;
-    }
-
-    /**
-     * 设置临时文件数据
-     * @access public
-     * @param  array $tmpfiles
-     * @return $this
-     */
-    public function withTmpFiles($tmpfiles)
-    {
-        $this->tmpfiles = $tmpfiles;
+        $this->token = $token;
         return $this;
     }
 
@@ -209,5 +153,50 @@ class WebSocketRequest
             return $this->get;
         }
         return $this->get[$name] ?? null;
+    }
+
+    public function getToken()
+    {
+        return $this->token;
+    }
+
+    /**
+     * 获取请求参数
+     * @param string $name
+     * @return array|mixed|null
+     */
+    public function getQuery($name = '')
+    {
+        if (empty($this->query_string)) {
+            return null;
+        }
+        $params = [];
+        $query = explode('&', $this->query_string);
+        foreach ($query as $vo) {
+            $arr = explode('=', $vo, 2);
+            $params[$arr[0]] = $arr[1];
+        }
+        if (empty($name)) {
+            return $params;
+        } else {
+            if (isset($params[$name]))
+                return $params[$name];
+            else
+                return null;
+        }
+    }
+
+    public function __get($name)
+    {
+        if (isset($this->$name))
+            return $this->$name;
+        else
+            return null;
+    }
+
+    public function __set($name, $value)
+    {
+        $this->$name = $value;
+        return $this->$name;
     }
 }

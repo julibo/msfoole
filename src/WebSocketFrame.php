@@ -1,6 +1,9 @@
 <?php
 namespace Julibo\Msfoole;
 
+use Swoole\Websocket\Server as Websocket;
+use Swoole\WebSocket\Frame as Webframe;
+
 class WebSocketFrame implements \ArrayAccess
 {
     private static $instance = null;
@@ -11,11 +14,14 @@ class WebSocketFrame implements \ArrayAccess
 
     private $data;
 
-    public function __construct($server, $frame)
+    private $fd;
+
+    public function __construct(Websocket $server, Webframe $frame)
     {
         $this->server = $server;
         $this->frame = $frame;
         $this->data = json_decode($this->frame->data, true);
+        $this->fd = $this->frame->fd;
     }
 
     public static function getInstance($server = null, $frame = null)
@@ -46,24 +52,24 @@ class WebSocketFrame implements \ArrayAccess
         return $this->data;
     }
 
-    public function getArgs()
+    public function getFd()
     {
-        return isset($this->data['arguments']) ?? null;
-    }
-
-    public function getModule()
-    {
-        return empty($this->data['module']) ? strtoupper($this->data['module']) : 'Index';
-    }
-
-    public function getMethod()
-    {
-        return empty($this->data['method']) ? strtoupper($this->data['method']) : 'Index';
+        return $this->fd;
     }
 
     public function __call($method, $params)
     {
         return call_user_func_array([$this->server, $method], $params);
+    }
+
+    public function exist($fd)
+    {
+        return $this->server->exist($fd);
+    }
+
+    public function disconnect($fd, $code = 10000, $reason = "")
+    {
+        $this->server->disconnect($fd, $code, $reason);
     }
 
     public function pushToClient($data)
@@ -75,7 +81,7 @@ class WebSocketFrame implements \ArrayAccess
     {
         if (is_string($data)) {
             $this->server->push($fd, $data);
-        } elseif (is_array($data)) {
+        } elseif (is_array($data) || is_object($data)) {
             $this->server->push($fd, json_encode($data));
         }
     }

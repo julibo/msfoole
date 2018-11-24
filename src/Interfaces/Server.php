@@ -17,8 +17,6 @@ use Swoole\Websocket\Server as Websocket;
 
 abstract class Server
 {
-    # const KEY = 'BXHospital201811';
-
     /**
      * Swoole对象
      * @var object
@@ -65,52 +63,7 @@ abstract class Server
      * 支持的响应事件
      * @var array
      */
-    protected $event = [
-        'Start',
-        'Shutdown',
-        'WorkerStop',
-        'WorkerExit',
-        'Connect',
-        'Receive',
-        'Packet',
-        'Close',
-        'BufferFull',
-        'BufferEmpty',
-        'Task',
-        'Finish',
-        'PipeMessage',
-        'WorkerError',
-        'ManagerStart',
-        'ManagerStop',
-        'Open',
-        'Message',
-        'HandShake',
-        'Request',
-    ];
-
-    /**
-     * todo
-     * 解密字符串
-     * @param $data
-     * @param $iv
-     * @return bool|string
-     */
-    public function encryptWithOpenssl($data, $iv)
-    {
-        return base64_decode(base64_encode($data), 'AES-128-CBC', self::KEY, $iv);
-    }
-
-    /**
-     * todo
-     * 加密字符串
-     * @param $data
-     * @param $iv
-     * @return string
-     */
-    public function decryptWithOpenssl($data, $iv)
-    {
-        return openssl_decrypt(base64_encode($data), 'AES-128-CBC', self::KEY, OPENSSL_RAW_DATA, $iv);
-    }
+    protected $event = [ 'Start', 'Shutdown', 'WorkerStart', 'WorkerStop', 'WorkerExit', 'Connect', 'Receive', 'Packet', 'Close', 'BufferFull', 'BufferEmpty', 'Task', 'Finish', 'PipeMessage', 'WorkerError', 'ManagerStart', 'ManagerStop', 'Open', 'Message', 'HandShake', 'Request'];
 
     /**
      * 魔术方法，又不存在的操作时候执行
@@ -143,7 +96,6 @@ abstract class Server
                 break;
             default:
                 $this->swoole = new HttpServer($this->host, $this->port, $this->mode, $this->sockType);
-
         }
 
         // 初始化
@@ -164,11 +116,11 @@ abstract class Server
         }
 
         // 补充逻辑
-        $this->startup();
+        $this->startLogic();
     }
 
     abstract protected function init();
 
-    abstract protected function startup();
+    abstract protected function startLogic();
 
 }
