@@ -174,9 +174,14 @@ class Application
             // 重置应用的开始时间和内存占用
             $this->beginTime = microtime(true);
             $this->beginMem  = memory_get_usage();
-
             ob_start();
-            echo "Hello World";
+            $robot = new \App\Controller\Robot();
+            // $result = $robot->getDepartment();
+            // $result = $robot->getSourceList();
+            // $result = $robot->getUserInfo();
+            // $result = $robot->getDoctorInfo();
+            // $result = $robot->previewRegister();
+            // echo json_encode($result);
             $content = ob_get_clean();
             $response->end($content);
         } catch (\Throwable $e) {

@@ -9,7 +9,6 @@ use Swoole\WebSocket\Frame as Webframe;
 use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
-use Julibo\Msfoole\Cache;
 
 
 class AloneHttpServer extends BaseServer
@@ -36,13 +35,12 @@ class AloneHttpServer extends BaseServer
 
     private $table;
 
-    private $cache;
-
     public function createTable()
     {
         $this->table = new table(Config::get('msfoole.table.size'));
         $this->table->column('cardno', table::TYPE_STRING, 20);
         $this->table->column('token', table::TYPE_STRING, 32);
+        $this->table->column('number', table::TYPE_STRING, 8);
         $this->table->column('create_time', table::TYPE_INT, 4);
         $this->table->column('last_time', table::TYPE_INT, 4);
         $this->table->column('user_info', table::TYPE_STRING, 1024);
@@ -57,11 +55,8 @@ class AloneHttpServer extends BaseServer
 
     protected function startLogic()
     {
-        # 创建内存表
+        # 创建全局内存表
         $this->createTable();
-        # 开启缓存
-        $cacheConfig = Config::get('cache.default') ?? [];
-        $this->cache = new Cache($cacheConfig);
     }
 
     public function onStart(\Swoole\Server $server)
@@ -117,7 +112,9 @@ class AloneHttpServer extends BaseServer
     {
         echo "client {$fd} closed\n";
         // 销毁内存表记录
-        $this->table->del($fd);
+        if ($this->table->exist($fd))
+            $this->table->del($fd);
+
     }
 
     /**
@@ -128,7 +125,7 @@ class AloneHttpServer extends BaseServer
     public function onRequest(SwooleRequest $request, SwooleResponse $response)
     {
         // 执行应用并响应
-        print_r($request);
+        // print_r($request);
         $this->app->swooleHttp($request, $response);
     }
 
