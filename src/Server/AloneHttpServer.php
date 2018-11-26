@@ -1,7 +1,6 @@
 <?php
 namespace Julibo\Msfoole\Server;
 
-use Julibo\Msfoole\Interfaces\Server as BaseServer;
 use Swoole\Http\Request as SwooleRequest;
 use Swoole\Http\Response as SwooleResponse;
 use Swoole\Websocket\Server as Websocket;
@@ -9,6 +8,7 @@ use Swoole\WebSocket\Frame as Webframe;
 use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Interfaces\Server as BaseServer;
 
 
 class AloneHttpServer extends BaseServer
@@ -90,7 +90,6 @@ class AloneHttpServer extends BaseServer
             $this->app->table = $this->table;
         }
         $this->app->initialize();
-        var_dump("worker进程启动");
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
@@ -110,9 +109,8 @@ class AloneHttpServer extends BaseServer
 
     public function onClose(\Swoole\Server $server, int $fd, int $reactorId)
     {
-        echo "client {$fd} closed\n";
         // 销毁内存表记录
-        if ($this->table->exist($fd))
+        if (!is_null($this->table) && $this->table->exist($fd))
             $this->table->del($fd);
 
     }
@@ -148,7 +146,7 @@ class AloneHttpServer extends BaseServer
      */
     public function WebsocketonMessage(Websocket $server, Webframe $frame)
     {
-        print_r("receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}");
+        // print_r("receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}");
         // 执行应用并响应
         $this->app->swooleWebSocket($server, $frame);
     }

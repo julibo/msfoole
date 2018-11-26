@@ -187,7 +187,7 @@ abstract class Server
                 if ($tableMonitor) {
                     swoole_timer_tick(60000, function () {
                         $timestamp = time();
-                        foreach ($this->table as $key => $val) {
+                        foreach ($this->cache as $key => $val) {
                             if ($val['time'] > 0 && $val['time'] < $timestamp)
                             $this->del($key);
                         }

@@ -20,7 +20,8 @@ class Application
     public $cache;
 
     private $request;
-
+    private $httpRequest;
+    private $httpResponse;
 
     public static $error = [
         'CON_EXCEPTION' => ['code' => 10000, 'msg' => '连接异常'],
@@ -175,20 +176,31 @@ class Application
             $this->beginTime = microtime(true);
             $this->beginMem  = memory_get_usage();
             ob_start();
-            $robot = new \App\Controller\Robot();
-            // $result = $robot->getDepartment();
-            // $result = $robot->getSourceList();
-            // $result = $robot->getUserInfo();
-            // $result = $robot->getDoctorInfo();
-            // $result = $robot->previewRegister();
-            // echo json_encode($result);
+            $this->httpRequest = new HttpRequest($request);
+            $this->httpResponse = new Response($response);
+            $this->explainRequest();
+
+
             $content = ob_get_clean();
-            $response->end($content);
+            $this->httpResponse->end($content);
         } catch (\Throwable $e) {
             var_dump($e->getMessage(), $e->getFile(), $e->getLine());
         }
     }
 
+    private function explainRequest()
+    {
+        if ($this->httpRequest->getRequestMethod != "POST") {
+            echo "非法操作";
+        }
+        $this->checkCookie();
 
+        $this->httpRequest->getPathInfo();
+    }
+
+    private function checkCookie()
+    {
+
+    }
 
 }
