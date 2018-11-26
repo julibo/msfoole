@@ -34,7 +34,7 @@ class Application
     }
 
     /**
-     * 获取TOKEN
+     * 获取websocket TOKEN
      */
     private function getToken($wvi, $cardno, $timestamp, $sign)
     {
@@ -88,7 +88,7 @@ class Application
 
     /**
      * 解析并验证请求
-     * @param string $data
+     * @param array $data
      * @return array|bool
      */
     private function explainMessage(array $data)
@@ -150,7 +150,7 @@ class Application
      */
     private function run($module, $method, $arguments = [])
     {
-        $controller = Loader::factory($module, '\\App\\Controller\\');
+        $controller = Loader::factory($module, CONTROLLER_NAMESPACE);
         $result = $controller->$method($arguments);
         return $result;
     }
@@ -180,7 +180,6 @@ class Application
             $this->httpResponse = new Response($response);
             $this->explainRequest();
 
-
             $content = ob_get_clean();
             $this->httpResponse->end($content);
         } catch (\Throwable $e) {
@@ -190,16 +189,11 @@ class Application
 
     private function explainRequest()
     {
-        if ($this->httpRequest->getRequestMethod != "POST") {
-            echo "非法操作";
-        }
-        $this->checkCookie();
-
-        $this->httpRequest->getPathInfo();
-    }
-
-    private function checkCookie()
-    {
+        $pathInfo = $this->httpRequest->getPathInfo();
+        $pathInfo = explode('/', $pathInfo);
+        $module = empty($pathInfo[0]) ? 'index' : $pathInfo[0];
+        $method = empty($pathInfo[1]) ? 'index' : $pathInfo[1];
+        $this->run($module, $method);
 
     }
 

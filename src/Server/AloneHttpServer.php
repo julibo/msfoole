@@ -5,11 +5,12 @@ use Swoole\Http\Request as SwooleRequest;
 use Swoole\Http\Response as SwooleResponse;
 use Swoole\Websocket\Server as Websocket;
 use Swoole\WebSocket\Frame as Webframe;
+use Swoole\Process;
 use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Cache;
 use Julibo\Msfoole\Interfaces\Server as BaseServer;
-
 
 class AloneHttpServer extends BaseServer
 {
@@ -33,14 +34,22 @@ class AloneHttpServer extends BaseServer
 
     protected $app;
 
+    /**
+     * websocket状态内存表
+     */
     private $table;
+
+    /**
+     * 全局缓存
+     * @var Cache
+     */
+    protected $cache;
 
     public function createTable()
     {
         $this->table = new table(Config::get('msfoole.table.size'));
-        $this->table->column('cardno', table::TYPE_STRING, 20);
         $this->table->column('token', table::TYPE_STRING, 32);
-        $this->table->column('number', table::TYPE_STRING, 8);
+        $this->table->column('counter', table::TYPE_INT, 4);
         $this->table->column('create_time', table::TYPE_INT, 4);
         $this->table->column('last_time', table::TYPE_INT, 4);
         $this->table->column('user_info', table::TYPE_STRING, 1024);
@@ -55,8 +64,71 @@ class AloneHttpServer extends BaseServer
 
     protected function startLogic()
     {
-        # 创建全局内存表
-        $this->createTable();
+        # 创建websocket状态内存表
+        if ($this->serverType == 'socket') {
+            $this->createTable();
+        }
+
+        # 开启全局缓存
+        $cacheConfig = Config::get('cache.default') ?? [];
+        $this->cache = new Cache($cacheConfig);
+        # 开启监控
+        $this->monitorProcess();
+    }
+
+    /**
+     * 文件监控，不包含配置变化
+     * table内存表监控
+     */
+    protected function monitorProcess()
+    {
+        $tableMonitor = false;
+        if ($this->cache) {
+            $driver = $this->cache->getDriver();
+            if (strtolower($driver) == 'table') {
+                $tableMonitor = true;
+            }
+        }
+        $paths = Config::get('msfoole.monitor.path');
+        if ($paths || $tableMonitor) {
+            $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
+                if ($tableMonitor) {
+                    swoole_timer_tick(60000, function () {
+                        $timestamp = time();
+                        $table = $this->cache->getTable();
+                        foreach ($table as $key => $val) {
+                            if ($val['time'] > 0 && $val['time'] < $timestamp)
+                                $table->del($key);
+                        }
+                    });
+                }
+                if ($paths) {
+                    $timer = Config::get('msfoole.monitor.interval') ?? 10;
+                    swoole_timer_tick($timer*1000, function () use($paths) {
+                        foreach ($paths as $path) {
+                            $dir      = new \RecursiveDirectoryIterator($path);
+                            $iterator = new \RecursiveIteratorIterator($dir);
+
+                            foreach ($iterator as $file) {
+                                if (pathinfo($file, PATHINFO_EXTENSION) != 'php') {
+                                    continue;
+                                }
+
+                                if ($this->lastMtime < $file->getMTime()) {
+                                    $this->lastMtime = $file->getMTime();
+                                    echo '[update]' . $file . " reload...\n";
+                                    $this->swoole->reload();
+                                    return;
+                                }
+                            }
+                        }
+                    });
+                }
+
+            });
+
+            $this->swoole->addProcess($mp);
+        }
     }
 
     public function onStart(\Swoole\Server $server)

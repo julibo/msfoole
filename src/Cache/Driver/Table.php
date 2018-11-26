@@ -81,4 +81,9 @@ class Table extends Driver
     {
         $this->handler->clear();
     }
+
+    public function getTable()
+    {
+        return $this->handler->getTable();
+    }
 }

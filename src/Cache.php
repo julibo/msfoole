@@ -18,6 +18,12 @@ class Cache
      */
     protected $handle;
 
+    /**
+     * 驱动
+     * @var
+     */
+    protected $driver;
+
     public function __construct(array $config = [])
     {
         $this->config = $config;
@@ -44,13 +50,19 @@ class Cache
             $name = md5(serialize($options));
         }
         if ($name === true || !isset($this->instance[$name])) {
-            $type = !empty($options['driver']) ? $options['driver'] : 'File';
+            $type = !empty($options['driver']) ? $options['driver'] : 'Table';
+            $this->driver = $type;
             if (true === $name) {
                 $name = md5(serialize($options));
             }
             $this->instance[$name] = Loader::factory($type, '\\Julibo\\Msfoole\\Cache\\Driver\\', $options);
         }
         return $this->instance[$name];
+    }
+
+    public function getDriver()
+    {
+        return $this->driver;
     }
 
     public function getConfig()

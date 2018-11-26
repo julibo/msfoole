@@ -14,9 +14,6 @@ namespace Julibo\Msfoole\Interfaces;
 use Swoole\Http\Server as HttpServer;
 use Swoole\Server as SwooleServer;
 use Swoole\Websocket\Server as Websocket;
-use Swoole\Process;
-use Julibo\Msfoole\Facade\Config;
-use Julibo\Msfoole\Cache;
 
 abstract class Server
 {
@@ -76,12 +73,6 @@ abstract class Server
     protected $lastMtime;
 
     /**
-     * 全局缓存
-     * @var Cache
-     */
-    public $cache;
-
-    /**
      * 魔术方法，又不存在的操作时候执行
      * @param $method
      * @param $args
@@ -132,10 +123,6 @@ abstract class Server
             }
         }
 
-        # 开启全局缓存
-        $cacheConfig = Config::get('cache.default') ?? [];
-        $this->cache = new Cache($cacheConfig);
-
         // 文件变化监控进程
         $this->monitorProcess();
 
@@ -146,57 +133,5 @@ abstract class Server
     abstract protected function init();
 
     abstract protected function startLogic();
-
-    /**
-     * 文件监控，不包含配置变化
-     */
-    protected function monitorProcess()
-    {
-        $tableMonitor = false;
-        if ($this->cache) {
-            $cacheConfig = $this->cache->getConfig();
-            if (strtolower($cacheConfig['driver']) == 'table') {
-                $tableMonitor = true;
-            }
-        }
-        $paths = Config::get('msfoole.monitor.path');
-        if ($paths || $tableMonitor) {
-            $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
-                if ($paths) {
-                    $timer = Config::get('msfoole.monitor.interval') ?? 10;
-                    swoole_timer_tick($timer*1000, function () use($paths) {
-                        foreach ($paths as $path) {
-                            $dir      = new \RecursiveDirectoryIterator($path);
-                            $iterator = new \RecursiveIteratorIterator($dir);
-
-                            foreach ($iterator as $file) {
-                                if (pathinfo($file, PATHINFO_EXTENSION) != 'php') {
-                                    continue;
-                                }
-
-                                if ($this->lastMtime < $file->getMTime()) {
-                                    $this->lastMtime = $file->getMTime();
-                                    echo '[update]' . $file . " reload...\n";
-                                    $this->swoole->reload();
-                                    return;
-                                }
-                            }
-                        }
-                    });
-                }
-                if ($tableMonitor) {
-                    swoole_timer_tick(60000, function () {
-                        $timestamp = time();
-                        foreach ($this->cache as $key => $val) {
-                            if ($val['time'] > 0 && $val['time'] < $timestamp)
-                            $this->del($key);
-                        }
-                    });
-                }
-            });
-
-            $this->swoole->addProcess($mp);
-        }
-    }
 
 }

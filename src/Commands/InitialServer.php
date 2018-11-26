@@ -18,6 +18,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 use Julibo\Msfoole\Interfaces\Console;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Facade\Log;
 use Julibo\Msfoole\Interfaces\Server as SwooleServer;
 use Swoole\Process;
 
@@ -40,7 +41,7 @@ class InitialServer extends Command implements Console
     public function configure()
     {
         $this->setName('msfoole')
-            ->setProcessTitle('msfoole:mainer')
+            ->setProcessTitle('msfoole:master')
             ->setDescription('msfoole命令行工具')
             ->setHelp('msfoole是基于swoole的简易微服务框架')
             ->addArgument('action', InputArgument::REQUIRED, '执行操作：可选择值为start、stop、reload、restart')
@@ -76,18 +77,22 @@ class InitialServer extends Command implements Console
         $action = $this->input->getArgument('action');
         if (!in_array($action, ['start', 'stop', 'restart','reload'])) {
             $this->output->writeln("<error>执行操作：可选择值为start（启动）、stop（停止）、restart（重启）、reload（重载）</error>");
-            exit(1);
+            exit(100);
         } else {
             $this->action = $action;
         }
         $env = $this->input->getOption('env');
         if (!in_array($env, ['dev', 'test', 'demo', 'online'])) {
             $this->output->writeln("<error>运行环境：可选值为dev（开发环境）、test（测试环境）、demo（演示环境）、online（生产环境）</error>");
-            exit(2);
+            exit(101);
         } else {
             $this->env = $env;
         }
         $this->setEnvConfig($this->env);
+
+        // 初始化日志
+        $logConfig = Config::get("log") ?? [];
+        Log::init($logConfig);
 
         // 避免PID混乱
         $port = $this->getPort();
@@ -106,15 +111,23 @@ class InitialServer extends Command implements Console
         }
     }
 
+    /**
+     * 获取服务HOST
+     * @return string
+     */
     private function getHost()
     {
-        $host = Config::get('application.host') ?: '0.0.0.0';
+        $host = Config::get('msfoole.host') ?: '0.0.0.0';
         return $host;
     }
 
+    /**
+     * 获取服务端口
+     * @return int
+     */
     private function getPort()
     {
-        $port = Config::get('application.port') ?: 9555;
+        $port = Config::get('msfoole.port') ?: 9555;
         return $port;
     }
 
@@ -131,9 +144,13 @@ class InitialServer extends Command implements Console
         return Process::kill($pid, 0);
     }
 
+    /**
+     * 获取主进程ID
+     * @return bool|int
+     */
     private function getMasterPid()
     {
-        $pidFile = Config::get('application.pid_file');
+        $pidFile = Config::get('msfoole.option.pid_file');
         if (is_file($pidFile)) {
             $masterPid = (int) file_get_contents($pidFile);
         } else {
@@ -142,9 +159,12 @@ class InitialServer extends Command implements Console
         return $masterPid;
     }
 
+    /**
+     * 删除主进程文件
+     */
     private function removePid()
     {
-        $pidFile = Config::get('application.pid_file');
+        $pidFile = Config::get('msfoole.option.pid_file');
         if (is_file($pidFile)) {
             unlink($pidFile);
         }

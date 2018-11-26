@@ -23,9 +23,9 @@ class Config
 
     /**
      * 设置配置
-     * @access public
-     * @param  string    $name  参数名
-     * @param  mixed     $value 值
+     * @param $name 参数名
+     * @param $value 值
+     * @return array
      */
     public function __set($name, $value)
     {
@@ -56,6 +56,10 @@ class Config
 
     /**
      * 获取配置参数 为空则获取所有配置
+     * @param null $name
+     * @param null $default
+     * @param bool $case
+     * @return array|mixed|null
      */
     public function get($name = null, $default = null, $case = false)
     {
@@ -84,6 +88,8 @@ class Config
 
     /**
      * 判断配置是否存在
+     * @param $name
+     * @return bool
      */
     public function has($name)
     {
@@ -143,6 +149,9 @@ class Config
 
     /**
      * 加载配置文件夹配置项
+     * @param $conf
+     * @param string $type
+     * @throws \Exception
      */
     public function loadConfig($conf, $type = '.ini')
     {

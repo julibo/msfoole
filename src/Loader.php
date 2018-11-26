@@ -12,7 +12,7 @@
 namespace Julibo\Msfoole;
 
 use think\Container;
-use Julibo\Smfoole\Exception\ClassNotFoundException;
+use Julibo\Msfoole\Exception\ClassNotFoundException;
 
 class Loader
 {

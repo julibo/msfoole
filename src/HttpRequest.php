@@ -20,8 +20,6 @@ class HttpRequest
 
     private $input;
 
-    private $getData;
-
     private $host;
 
     private $origin;
@@ -55,28 +53,29 @@ class HttpRequest
             ->withServer($request->server)
             ->withGet($request->get)
             ->withPost($request->post)
-            ->withCookie($request->cookie)
-            ->withInput($request->rawContent)
-            ->withData($request->getData);
+            ->withCookie($request->cookie);
+        if (isset($request->rawContent)) {
+            $this->withInput($request->rawContent);
+        }
     }
 
     private function withHeader($header)
     {
         $this->header = $header;
         $this->host = $this->header['host'];
-        $this->origin = $this->header['origin'];
+        $this->origin = $this->header['origin'] ?? null;
         return $this;
     }
 
     private function withServer($server)
     {
         $this->server = $server;
-        $this->query_string = $this->server['query_string'];
-        $this->request_method = $this->server['request_method'];
-        $this->request_uri = $this->server['request_uri'];
-        $this->path_info = $this->server['path_info'];
-        $this->server_port = $this->server['server_port'];
-        $this->remote_addr = $this->server['remote_addr'];
+        $this->query_string = $this->server['query_string'] ?? null;
+        $this->request_method = $this->server['request_method'] ?? null;
+        $this->request_uri = $this->server['request_uri'] ?? null;
+        $this->path_info = $this->server['path_info'] ?? null;
+        $this->server_port = $this->server['server_port'] ?? null;
+        $this->remote_addr = $this->server['remote_addr'] ?? null;
         return $this;
     }
 
@@ -101,12 +100,6 @@ class HttpRequest
     private function withInput($input)
     {
         $this->input = $input;
-        return $this;
-    }
-
-    private function withData($data)
-    {
-        $this->getData = $data;
         return $this;
     }
 
