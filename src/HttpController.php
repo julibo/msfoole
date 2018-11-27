@@ -68,7 +68,7 @@ abstract class HttpController
      */
     protected function paramChecking()
     {
-
+        $this->params = $this->request->params;
     }
 
 }

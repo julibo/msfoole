@@ -8,41 +8,27 @@ namespace Julibo\Msfoole;
 
 abstract class WebsocketController
 {
-    protected $request;
-
+    /**
+     * 当前用户
+     * @var
+     */
     protected $user;
 
+    /**
+     * 请求参数
+     * @var
+     */
     protected $params;
-
-    public function __construct(WebSocketRequest $request, $user)
-    {
-        $this->request = $request;
-        $this->user = $user;
-        $this->authentication();
-        $this->paramChecking();
-        $this->init();
-    }
 
     /**
      * 初始化方法
-     * @return mixed
+     * @param $user
+     * @param $params
      */
-    abstract protected function init();
-
-    /**
-     * 用户鉴权
-     */
-    final protected function authentication()
+    final protected function init($user, $params)
     {
-
-    }
-
-    /**
-     * 参数校验
-     */
-    protected function paramChecking()
-    {
-
+        $this->user = $user;
+        $this->params = $params;
     }
 
 }

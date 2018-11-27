@@ -14,15 +14,44 @@ class Application
     // 开始时间和内存占用
     private $beginTime;
     private $beginMem;
+    /**
+     * @var
+     */
     private $websocketFrame;
 
+    /**
+     * swoole服务
+     * @var
+     */
     public $swoole;
+
+    /**
+     * websocket内存表
+     * @var
+     */
     public $table;
+
+    /**
+     *  全局缓存
+     * @var
+     */
     public $cache;
 
+    /**
+     * websocket request
+     * @var
+     */
     private $request;
 
+    /**
+     * http请求
+     * @var
+     */
     private $httpRequest;
+    /**
+     * http应答
+     * @var
+     */
     private $httpResponse;
 
     public static $error = [
@@ -80,40 +109,32 @@ class Application
     {
         $this->request = WebSocketRequest::getInstance($request);
         $token = $this->request->getQuery('token');
-        $carno = $this->request->getQuery('cardno');
+        $cardno = $this->request->getQuery('cardno');
         $timestamp = $this->request->getQuery('timestamp');
         $sign = $this->request->getQuery('sign');
 
-        if ($token && $carno && $timestamp && $sign) {
-            $token = $this->getToken($token, $carno, $timestamp, $sign);
+        if ($token && $cardno && $timestamp && $sign) {
+            $token = $this->getToken($token, $cardno, $timestamp, $sign);
         }
-        if ($token === false) {
+        if ($token === false)
             $server->disconnect($this->request->getFd(), self::$error['CON_EXCEPTION']['code'], self::$error['CON_EXCEPTION']['msg']);
-        } else {
-            $this->request->setToken($token);
+        else
             $server->push($this->request->getFd(), $token);
-        }
+
+        $userInfo = ['cardno' => $cardno];
         // 创建内存表记录
-        $this->table->set($this->request->getFd(), ['cardno' => $carno, 'token' => $token, 'create_time' => $timestamp, 'last_time'=>$timestamp, 'user_info'=>'{}']);
+        $this->table->set($this->request->getFd(), ['token' => $token, 'counter' => 0, 'create_time' => $timestamp, 'last_time'=>$timestamp, 'user_info'=>$userInfo]);
         // 将请求保存到内存表后销毁request记录
         $this->destroyRequest();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     /**
-     * 获取websocket TOKEN
+     * 生成websocket TOKEN
+     * @param $wvi
+     * @param $cardno
+     * @param $timestamp
+     * @param $sign
+     * @return bool|mixed|string
      */
     private function getToken($wvi, $cardno, $timestamp, $sign)
     {
@@ -124,7 +145,7 @@ class Application
         if ($pass != $sign) {
             return false;
         }
-        $token = substr(Helper::guid(), 16);
+        $token = Helper::guid();
         return $token;
     }
 
@@ -137,7 +158,28 @@ class Application
         unset($this->request);
     }
 
-
+    /**
+     * 处理websocket请求
+     * @param Websocket $server
+     * @param Webframe $frame
+     */
+    public function swooleWebSocket(Websocket $server, Webframe $frame)
+    {
+        try {
+            $this->websocketFrame = WebSocketFrame::getInstance($server, $frame);
+            // 解析并验证请求
+            $checkResult = $this->explainMessage($this->websocketFrame->getData());
+            if ($checkResult === false) {
+                $this->websocketFrame->disconnect($frame->fd, self::$error['SIGN_EXCEPTION']['code'], self::$error['SIGN_EXCEPTION']['msg']);
+            }
+            $result = $this->runing($checkResult);
+            $data = ['code'=>0, 'msg'=>'', 'data'=>$result];
+            $this->websocketFrame->sendToClient($frame->fd, $data);
+            WebSocketFrame::destroy();
+        } catch (\Throwable $e) {
+            var_dump($e->getMessage(), $e->getFile(), $e->getLine());
+        }
+    }
 
     /**
      * 解析并验证请求
@@ -157,67 +199,35 @@ class Application
         if ($data['timestamp'] + 600 < time() ||  $data['timestamp'] - 600 > time()) {
             return false;
         }
-        $checkSign = base64_encode(openssl_encrypt(json_encode($data['data']),"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $data['token']));
-        if ($data['sign'] != $checkSign && false) {
+        $vi = substr($data['token'], 0, 16);
+        $checkSign = base64_encode(openssl_encrypt(json_encode($data['data']),"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $vi));
+        if ($data['sign'] != $checkSign) {
             return false;
         }
         $req = json_decode($data['data'], true);
+        if (empty($req['timestamp']) || $req['timestamp'] != $data['timestamp']) {
+            return false;
+        }
+
         return [
-            'module' => $req['module'] ?? 'Index',
-            'method' => $req['method'] ?? 'index',
+            'module' => $req['module'] ?? Config::get('application.default.controller'),
+            'method' => $req['method'] ?? Config::get('application.default.action'),
             'arguments' => $req['arguments'] ?? [],
+            'user' => $user
         ];
     }
 
     /**
-     * 处理websocket请求
-     * @param Websocket $server
-     * @param Webframe $frame
-     */
-    public function swooleWebSocket(Websocket $server, Webframe $frame)
-    {
-        try {
-            // 重置应用的开始时间和内存占用
-            $this->beginTime = microtime(true);
-            $this->beginMem  = memory_get_usage();
-            $this->websocketFrame = WebSocketFrame::getInstance($server, $frame);
-            // 解析并验证请求
-            $checkResult = $this->explainMessage($this->websocketFrame->getData());
-            if ($checkResult === false) {
-                $this->websocketFrame->disconnect($frame->fd, self::$error['SIGN_EXCEPTION']['code'], self::$error['SIGN_EXCEPTION']['msg']);
-            }
-            $result = $this->run($checkResult['module'], $checkResult['method'], $checkResult['arguments']);
-            $this->send($frame->fd, $result);
-            WebSocketFrame::destroy();
-        } catch (\Throwable $e) {
-            var_dump($e->getMessage(), $e->getFile(), $e->getLine());
-        }
-    }
-
-    /**
-     * 业务处理
-     * @param $module
-     * @param $method
-     * @param array $arguments
+     * 业务逻辑运行
+     * @param array $args
      * @return mixed
      */
-    private function run($module, $method, $arguments = [])
+    private function runing(array $args)
     {
-        $controller = Loader::factory($module, CONTROLLER_NAMESPACE);
-        $result = $controller->$method($arguments);
+        $controller = Loader::factory($args['module'], CONTROLLER_NAMESPACE . 'Robot\\');
+        $controller->init($args['user'], $args['arguments']);
+        $result = $controller->$args['method']($args['arguments']);
         return $result;
     }
-
-    /**
-     * 数据发送
-     */
-    private function send($fd, $result)
-    {
-        $data = ['code'=>0, 'msg'=>'', 'data'=>$result];
-        $this->websocketFrame->sendToClient($fd, $data);
-    }
-
-
-
 
 }
