@@ -1,6 +1,8 @@
 <?php
 namespace Julibo\Msfoole;
 
+use Julibo\Msfoole\Facade\Config;
+
 class Cookie
 {
 
@@ -10,16 +12,16 @@ class Cookie
     private $cookies;
 
     /**
-     * 用户标识
-     * @var
-     */
-    private $token;
-
-    /**
      * http响应对象
      * @var
      */
     private $response;
+
+    /**
+     * 全局缓存
+     * @var
+     */
+    private $cache;
 
     /**
      * 默认配置
@@ -44,11 +46,15 @@ class Cookie
 
     /**
      * 初始化
+     * @param HttpRequest $request
+     * @param Response $response
+     * @param Cache $cache
      */
-    public function init(HttpRequest $request, Response $response)
+    public function init(HttpRequest $request, Response $response, Cache $cache)
     {
         $this->cookies = $request->getCookie();
         $this->response = $response;
+        $this->cache = $cache;
         $this->config = array_merge($this->config, Config::get('cookie'));
     }
 
@@ -91,7 +97,7 @@ class Cookie
         $token = $this->config['token'] ?: '_token';
         $uuid = Helper::guid();
         $this->setCookie($token, $uuid);
-        Cache::set($uuid, json_encode($user), $this->config['expire']);
+        $this->cache->set($uuid, json_encode($user), $this->config['expire']);
     }
 
     /**
@@ -112,11 +118,14 @@ class Cookie
     public function getTokenCache()
     {
         $token = $this->getToken();
-        $user = Cache::get($token);
-        if ($user === null)
+        $user = $this->cache->get($token);
+        if ($user === null) {
             return null;
-        else
+        } else {
+            $this->cache->set($token, $user, $this->config['expire']);
             return json_decode($user);
+        }
     }
 
 }
+

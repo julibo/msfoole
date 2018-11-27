@@ -7,6 +7,7 @@ use Swoole\Http\Response as SwooleResponse;
 use Swoole\Websocket\Server as Websocket;
 use Swoole\WebSocket\Frame as Webframe;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Facade\Cookie;
 
 class Application
 {
@@ -20,6 +21,7 @@ class Application
     public $cache;
 
     private $request;
+
     private $httpRequest;
     private $httpResponse;
 
@@ -28,34 +30,45 @@ class Application
         'SIGN_EXCEPTION' => ['code' => 10001, 'msg' => '签名异常'],
     ];
 
+    /**
+     * 初始化
+     */
     public function initialize()
     {
-
+        $this->beginTime = microtime(true);
+        $this->beginMem  = memory_get_usage();
     }
 
     /**
-     * 获取websocket TOKEN
+     * 处理http请求
+     * @param SwooleRequest $request
+     * @param SwooleResponse $response
      */
-    private function getToken($wvi, $cardno, $timestamp, $sign)
+    public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
-        if ($timestamp + 600 < time() ||  $timestamp - 600 > time() || Config::get('msfoole.websocket.vi') != $wvi) {
-            return false;
+        try {
+            ob_start();
+            $this->httpRequest = new HttpRequest($request);
+            $this->httpResponse = new Response($response);
+            Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
+            $this->working();
+        } catch (\Throwable $e) {
+            echo  json_encode(['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]]);
         }
-        $pass = base64_encode(openssl_encrypt($cardno.$timestamp,"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $wvi));
-        if ($pass != $sign) {
-            return false;
-        }
-        $token = substr(Helper::guid(), 16);
-        return $token;
+        $content = ob_get_clean();
+        $this->httpResponse->end($content);
     }
 
     /**
-     * 销毁请求request
+     * 运行请求
      */
-    private function destroyRequest()
+    private function working()
     {
-        WebSocketRequest::destroy($this->request);
-        unset($this->request);
+        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
+        $method = $this->httpRequest->action;
+        $data = $controller->$method();
+        $result = ['code' => 0, 'msg' => '', 'data' => $data];
+        echo json_encode($result);
     }
 
     /**
@@ -85,6 +98,46 @@ class Application
         // 将请求保存到内存表后销毁request记录
         $this->destroyRequest();
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * 获取websocket TOKEN
+     */
+    private function getToken($wvi, $cardno, $timestamp, $sign)
+    {
+        if ($timestamp + 600 < time() ||  $timestamp - 600 > time() || Config::get('msfoole.websocket.vi') != $wvi) {
+            return false;
+        }
+        $pass = base64_encode(openssl_encrypt($cardno.$timestamp,"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $wvi));
+        if ($pass != $sign) {
+            return false;
+        }
+        $token = substr(Helper::guid(), 16);
+        return $token;
+    }
+
+    /**
+     * 销毁请求request
+     */
+    private function destroyRequest()
+    {
+        WebSocketRequest::destroy($this->request);
+        unset($this->request);
+    }
+
+
 
     /**
      * 解析并验证请求
@@ -164,37 +217,7 @@ class Application
         $this->websocketFrame->sendToClient($fd, $data);
     }
 
-    /**
-     * 处理http请求
-     * @param SwooleRequest $request
-     * @param SwooleResponse $response
-     */
-    public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
-    {
-        try {
-            // 重置应用的开始时间和内存占用
-            $this->beginTime = microtime(true);
-            $this->beginMem  = memory_get_usage();
-            ob_start();
-            $this->httpRequest = new HttpRequest($request);
-            $this->httpResponse = new Response($response);
-            $this->explainRequest();
 
-            $content = ob_get_clean();
-            $this->httpResponse->end($content);
-        } catch (\Throwable $e) {
-            var_dump($e->getMessage(), $e->getFile(), $e->getLine());
-        }
-    }
 
-    private function explainRequest()
-    {
-        $pathInfo = $this->httpRequest->getPathInfo();
-        $pathInfo = explode('/', $pathInfo);
-        $module = empty($pathInfo[0]) ? 'index' : $pathInfo[0];
-        $method = empty($pathInfo[1]) ? 'index' : $pathInfo[1];
-        $this->run($module, $method);
-
-    }
 
 }
