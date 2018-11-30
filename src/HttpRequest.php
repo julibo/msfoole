@@ -124,7 +124,7 @@ class HttpRequest
         if (isset($request->rawContent)) {
             $this->withInput($request->rawContent);
         }
-        // $this->explain();
+        $this->explain();
     }
 
     /**
@@ -134,7 +134,7 @@ class HttpRequest
      */
     private function withHeader($header)
     {
-        $this->header = array_change_key_case($header);
+        $this->header = $header;
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
         return $this;
@@ -148,7 +148,7 @@ class HttpRequest
      */
     private function withServer($server)
     {
-        $this->server = array_change_key_case($server);
+        $this->server = $server;
         $this->request_method = $this->server['request_method'] ?? null;
         $this->request_uri = $this->server['request_uri'] ?? null;
         $this->path_info = $this->server['path_info'] ?? null;
