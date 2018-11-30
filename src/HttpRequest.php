@@ -124,7 +124,7 @@ class HttpRequest
         if (isset($request->rawContent)) {
             $this->withInput($request->rawContent);
         }
-        $this->explain();
+        // $this->explain();
     }
 
     /**
@@ -134,7 +134,7 @@ class HttpRequest
      */
     private function withHeader($header)
     {
-        $this->header = $header;
+        $this->header = array_change_key_case($header);
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
         return $this;
@@ -148,7 +148,7 @@ class HttpRequest
      */
     private function withServer($server)
     {
-        $this->server = $server;
+        $this->server = array_change_key_case($server);
         $this->request_method = $this->server['request_method'] ?? null;
         $this->request_uri = $this->server['request_uri'] ?? null;
         $this->path_info = $this->server['path_info'] ?? null;
@@ -247,35 +247,114 @@ class HttpRequest
 
     /**
      * Http请求的GET参数，相当于PHP中的$_GET，格式为数组。
-     * @return mixed
+     * @param string $name
+     * @return |null
      */
-    public function getParams()
+    public function getParams($name = "")
     {
-        return $this->get;
+        if ($name == '') {
+            return $this->get;
+        }
+        return $this->get[$name] ?? null;
     }
 
     /**
      * HTTP POST参数，格式为数组。
-     * @return mixed
+     * @param string $name
+     * @return mixed|null
      */
-    public function getPost()
+    public function getPost($name = "")
     {
-        return $this->post;
+        if ($name == '') {
+            return $this->post;
+        }
+        return $this->post[$name] ?? null;
     }
 
     /**
      * HTTP请求携带的COOKIE信息，与PHP的$_COOKIE相同，格式为数组。
-     * @return mixed
+     * @param string $name
+     * @return mixed|null
      */
-    public function getCookie()
+    public function getCookie($name = "")
     {
-        return $this->cookie;
+        if ($name == '') {
+            return $this->cookie;
+        }
+        return $this->cookie[$name] ?? null;
+    }
+
+    /**
+     * Http请求的头部信息。类型为数组，所有key均为小写。
+     * @param string $name
+     * @return mixed|null
+     */
+    public function getHeader($name = '')
+    {
+        if ($name == '') {
+            return $this->header;
+        }
+        return $this->header[$name] ?? null;
+    }
+
+    /**
+     * Http请求相关的服务器信息，相当于PHP的$_SERVER数组。
+     * 包含了Http请求的方法，URL路径，客户端IP等信息。
+     * @param string $name
+     * @return mixed|null
+     */
+    public function getServer($name = '')
+    {
+        if ($name == '') {
+            return $this->server;
+        }
+        return $this->server[$name] ?? null;
+    }
+
+    /**
+     * 获取请求参数
+     * @param string $name
+     * @return array|mixed|null
+     */
+    public function getQuery($name = '')
+    {
+        if (empty($this->query_string)) {
+            return null;
+        }
+        $params = [];
+        $query = explode('&', $this->query_string);
+        foreach ($query as $vo) {
+            $arr = explode('=', $vo, 2);
+            $params[$arr[0]] = $arr[1];
+        }
+        if (empty($name)) {
+            return $params;
+        } else {
+            if (isset($params[$name]))
+                return $params[$name];
+            else
+                return null;
+        }
+    }
+
+    public function __get($name)
+    {
+        if (isset($this->$name))
+            return $this->$name;
+        else
+            return null;
+    }
+
+    public function __set($name, $value)
+    {
+        $this->$name = $value;
+        return $this->$name;
     }
 
     /**
      * 请求解析器
      */
-    private function explain()
+    public function explain()
     {
         $multiModule = Config::get('application.multi.module') ?? false;
         $defaultModule = Config::get('application.default.module') ?? 'Index';

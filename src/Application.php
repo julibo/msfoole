@@ -55,8 +55,9 @@ class Application
     private $httpResponse;
 
     public static $error = [
-        'CON_EXCEPTION' => ['code' => 10000, 'msg' => '连接异常'],
-        'SIGN_EXCEPTION' => ['code' => 10001, 'msg' => '签名异常'],
+        'AUTH_FAILED' => ['code' => 10000, 'msg' => '认证失败'],
+        'CON_EXCEPTION' => ['code' => 10001, 'msg' => '连接异常'],
+        'SIGN_EXCEPTION' => ['code' => 10002, 'msg' => '签名异常'],
     ];
 
     /**
@@ -100,6 +101,11 @@ class Application
         echo json_encode($result);
     }
 
+
+
+
+
+
     /**
      * webSocket连接开启
      * @param Websocket $server
@@ -107,55 +113,25 @@ class Application
      */
     public function swooleWebSocketOpen(Websocket $server, SwooleRequest $request)
     {
-        $this->request = WebSocketRequest::getInstance($request);
-        $token = $this->request->getQuery('token');
-        $cardno = $this->request->getQuery('cardno');
-        $timestamp = $this->request->getQuery('timestamp');
-        $sign = $this->request->getQuery('sign');
-
-        if ($token && $cardno && $timestamp && $sign) {
-            $token = $this->getToken($token, $cardno, $timestamp, $sign);
+        try {
+            $this->request = new HttpRequest($request);
+            $params = $this->request->getQuery();
+            $authClass = Config::get('msfoole.websocket.login_class');
+            $authAction = Config::get('msfoole.websocket.login_action');
+            $authObject = new $authClass;
+            $user = call_user_func_array([$authObject, $authAction], [$params]);
+            if (empty($user)) {
+                $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
+            } else {
+                $token = Helper::guid();
+                // 创建内存表记录
+                $this->table->set($request->fd, ['token' => $token, 'counter' => 0, 'create_time' => time(), 'last_time'=>time(), 'user_info'=>json_encode($user)]);
+                // 向客户端发送授权
+                $server->push($request->fd, $token);
+            }
+        } catch (\Throwable $e) {
+           $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
         }
-        if ($token === false)
-            $server->disconnect($this->request->getFd(), self::$error['CON_EXCEPTION']['code'], self::$error['CON_EXCEPTION']['msg']);
-        else
-            $server->push($this->request->getFd(), $token);
-
-        $userInfo = ['cardno' => $cardno];
-        // 创建内存表记录
-        $this->table->set($this->request->getFd(), ['token' => $token, 'counter' => 0, 'create_time' => $timestamp, 'last_time'=>$timestamp, 'user_info'=>$userInfo]);
-        // 将请求保存到内存表后销毁request记录
-        $this->destroyRequest();
-    }
-
-    /**
-     * 生成websocket TOKEN
-     * @param $wvi
-     * @param $cardno
-     * @param $timestamp
-     * @param $sign
-     * @return bool|mixed|string
-     */
-    private function getToken($wvi, $cardno, $timestamp, $sign)
-    {
-        if ($timestamp + 600 < time() ||  $timestamp - 600 > time() || Config::get('msfoole.websocket.vi') != $wvi) {
-            return false;
-        }
-        $pass = base64_encode(openssl_encrypt($cardno.$timestamp,"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $wvi));
-        if ($pass != $sign) {
-            return false;
-        }
-        $token = Helper::guid();
-        return $token;
-    }
-
-    /**
-     * 销毁请求request
-     */
-    private function destroyRequest()
-    {
-        WebSocketRequest::destroy($this->request);
-        unset($this->request);
     }
 
     /**
@@ -171,13 +147,17 @@ class Application
             $checkResult = $this->explainMessage($this->websocketFrame->getData());
             if ($checkResult === false) {
                 $this->websocketFrame->disconnect($frame->fd, self::$error['SIGN_EXCEPTION']['code'], self::$error['SIGN_EXCEPTION']['msg']);
+            } else {
+                $result = $this->runing($checkResult);
+                $data = ['code'=>0, 'msg'=>'', 'data'=>$result, 'requestId'=>$checkResult['requestId']];
+                $this->websocketFrame->sendToClient($frame->fd, $data);
             }
-            $result = $this->runing($checkResult);
-            $data = ['code'=>0, 'msg'=>'', 'data'=>$result];
-            $this->websocketFrame->sendToClient($frame->fd, $data);
+            unset($this->websocketFrame);
             WebSocketFrame::destroy();
         } catch (\Throwable $e) {
-            var_dump($e->getMessage(), $e->getFile(), $e->getLine());
+            $req = json_decode($frame->data, true);
+            $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
+            $this->websocketFrame->sendToClient($frame->fd, $data);
         }
     }
 
@@ -189,31 +169,32 @@ class Application
     private function explainMessage(array $data)
     {
         $user = $this->table->get($this->websocketFrame->getFd());
-        if (empty($user) || empty($data['data']) || empty($data['token']) || empty($data['timestamp']) || empty($data['sign'])) {
+        if (empty($user) || empty($data['data']) || empty($data['token']) || empty($data['timestamp']) || empty($data['sign'])  || empty($data['requestId'])) {
             return false;
         }
-        if ($user['token'] != $data['token']) {
+        if ($user['token'] != $data['token'] || $data['timestamp'] + 600 < time() ||  $data['timestamp'] - 600 > time()) {
             return false;
         }
-
-        if ($data['timestamp'] + 600 < time() ||  $data['timestamp'] - 600 > time()) {
+        $vi = substr($data['token'], -16);
+        if (Config::get('msfoole.websocket.sign') == null) {
+            $pass = base64_encode(openssl_encrypt(json_encode($data['data']),"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $vi));
+            if ($pass != $data['sign']) {
+                return false;
+            }
+        } else {
+            if (Config::get('msfoole.websocket.sign') != $data['sign']) {
+                return false;
+            }
+        }
+        if (empty($data['data']['timestamp']) || $data['data']['timestamp'] != $data['timestamp']) {
             return false;
         }
-        $vi = substr($data['token'], 0, 16);
-        $checkSign = base64_encode(openssl_encrypt(json_encode($data['data']),"AES-128-CBC", Config::get('msfoole.websocket.key'),OPENSSL_RAW_DATA, $vi));
-        if ($data['sign'] != $checkSign) {
-            return false;
-        }
-        $req = json_decode($data['data'], true);
-        if (empty($req['timestamp']) || $req['timestamp'] != $data['timestamp']) {
-            return false;
-        }
-
         return [
-            'module' => $req['module'] ?? Config::get('application.default.controller'),
-            'method' => $req['method'] ?? Config::get('application.default.action'),
-            'arguments' => $req['arguments'] ?? [],
-            'user' => $user
+            'module' => $data['data']['module'] ?? Config::get('application.default.controller'),
+            'method' => $data['data']['method'] ?? Config::get('application.default.action'),
+            'arguments' => $data['data']['arguments'] ?? [],
+            'requestId' =>  $data['requestId'],
+            'user' => json_decode($user['user_info'])
         ];
     }
 
@@ -224,9 +205,9 @@ class Application
      */
     private function runing(array $args)
     {
-        $controller = Loader::factory($args['module'], CONTROLLER_NAMESPACE . 'Robot\\');
+        $controller = Loader::factory($args['module'], Config::get('msfoole.websocket.namespace'));
         $controller->init($args['user'], $args['arguments']);
-        $result = $controller->$args['method']($args['arguments']);
+        $result = call_user_func([$controller, $args['method']]);
         return $result;
     }
 

@@ -25,7 +25,7 @@ abstract class WebsocketController
      * @param $user
      * @param $params
      */
-    final protected function init($user, $params)
+    final public function init($user, $params)
     {
         $this->user = $user;
         $this->params = $params;

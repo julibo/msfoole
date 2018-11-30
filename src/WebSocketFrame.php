@@ -16,7 +16,7 @@ class WebSocketFrame implements \ArrayAccess
 
     private $fd;
 
-    public function __construct(Websocket $server, Webframe $frame)
+    private function __construct(Websocket $server, Webframe $frame)
     {
         $this->server = $server;
         $this->frame = $frame;
@@ -79,7 +79,7 @@ class WebSocketFrame implements \ArrayAccess
 
     public function sendToClient($fd, $data)
     {
-        if (is_string($data)) {
+        if (is_scalar($data)) {
             $this->server->push($fd, $data);
         } elseif (is_array($data) || is_object($data)) {
             $this->server->push($fd, json_encode($data));
