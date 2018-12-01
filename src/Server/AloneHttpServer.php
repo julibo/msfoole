@@ -10,6 +10,8 @@ use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
 use Julibo\Msfoole\Cache;
+use Julibo\Msfoole\Channel;
+use Julibo\Msfoole\Loader;
 use Julibo\Msfoole\Interfaces\Server as BaseServer;
 
 class AloneHttpServer extends BaseServer
@@ -45,6 +47,11 @@ class AloneHttpServer extends BaseServer
      */
     protected $cache;
 
+    /**
+     * 开启队列投递服务
+     */
+    protected $channelOpen = false;
+
     public function createTable()
     {
         $this->table = new table(Config::get('msfoole.table.size'));
@@ -64,6 +71,11 @@ class AloneHttpServer extends BaseServer
 
     protected function startLogic()
     {
+        $channelSize = Config::get('msfoole.channel.size');
+        if ($channelSize) {
+            Channel::instance($channelSize);
+            $this->channelOpen = true;
+        }
         # 创建websocket状态内存表
         if ($this->serverType == 'socket') {
             $this->createTable();
@@ -90,8 +102,19 @@ class AloneHttpServer extends BaseServer
             }
         }
         $paths = Config::get('msfoole.monitor.path');
-        if ($paths || $tableMonitor) {
+        if ($paths || $tableMonitor || $this->channelOpen) {
             $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
+                $process->name("msfoole:monitor");
+                if ($this->channelOpen) {
+                    swoole_timer_tick(1000, function () {
+                        $data = Channel::instance()->pop();
+                        if ($data !== false) {
+                            $controller = Loader::factory($data['class'], $data['namespace']);
+                            $result = call_user_func([$controller, $data['action']], $data['data']);
+                            $this->swoole->push($data['fd'], $result);
+                        }
+                    });
+                }
                 if ($tableMonitor) {
                     swoole_timer_tick(60000, function () {
                         $timestamp = time();
@@ -104,7 +127,7 @@ class AloneHttpServer extends BaseServer
                 }
                 if ($paths) {
                     $timer = Config::get('msfoole.monitor.interval') ?? 10;
-                    swoole_timer_tick($timer*1000, function () use($paths) {
+                    swoole_timer_tick($timer*60000, function () use($paths) {
                         foreach ($paths as $path) {
                             $dir      = new \RecursiveDirectoryIterator($path);
                             $iterator = new \RecursiveIteratorIterator($dir);
@@ -124,9 +147,7 @@ class AloneHttpServer extends BaseServer
                         }
                     });
                 }
-
             });
-
             $this->swoole->addProcess($mp);
         }
     }
@@ -143,6 +164,7 @@ class AloneHttpServer extends BaseServer
 
     public function onManagerStart(\Swoole\Server $server)
     {
+        swoole_set_process_name("msfoole:manager");
         var_dump("管理进程启动");
     }
 
@@ -153,6 +175,7 @@ class AloneHttpServer extends BaseServer
 
     public function onWorkerStart(\Swoole\Server $server, int $worker_id)
     {
+        swoole_set_process_name("msfoole:worker");
         // 应用实例化
         $this->app = new Application();
         // Swoole Server保存到容器
@@ -162,6 +185,13 @@ class AloneHttpServer extends BaseServer
             $this->app->table = $this->table;
         }
         $this->app->initialize();
+//        $data = [
+//            'namespace' => '\\App\\Service\\',
+//            'class' =>'Robot',
+//            'action' =>'register',
+//            'data' => ['fd'=>1]
+//        ];
+//        Channel::instance()->push($data);
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
@@ -209,6 +239,7 @@ class AloneHttpServer extends BaseServer
     {
         // print_r($request);
         $this->app->swooleWebSocketOpen($server, $request);
+        $server->push($request->fd, 10000);
     }
 
     /**

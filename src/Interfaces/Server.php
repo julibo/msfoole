@@ -123,9 +123,6 @@ abstract class Server
             }
         }
 
-        // 文件变化监控进程
-        $this->monitorProcess();
-
         // 补充逻辑
         $this->startLogic();
     }
