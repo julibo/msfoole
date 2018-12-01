@@ -26,6 +26,11 @@ class HttpRequest
     private $filter = '';
 
     /**
+     * http请求原始报文
+     */
+    private $data;
+
+    /**
      * Http请求的头部信息，格式为数组。
      * @var
      */
@@ -114,17 +119,29 @@ class HttpRequest
             $this->filter = $this->config['default_filter'];
         }
 
-        $this->withHeader($request->header)->withServer($request->server);
+        $this->withData($request->getData())->withHeader($request->header)->withServer($request->server);
         if (isset($request->get))
             $this->withGet($request->get);
         if (isset($request->post))
             $this->withPost($request->post);
         if (isset($request->cookie))
             $this->withCookie($request->cookie);
-        if (isset($request->rawContent)) {
-            $this->withInput($request->rawContent);
+        $rawContent = $request->rawContent();
+        if (!empty($rawContent)) {
+            $this->withInput($rawContent);
         }
         $this->explain();
+    }
+
+    /**
+     * 获取完整原始报文
+     * @param $data
+     * @return $this
+     */
+    private function withData($data)
+    {
+        $this->data = $data;
+        return $this;
     }
 
     /**
@@ -335,6 +352,11 @@ class HttpRequest
             else
                 return null;
         }
+    }
+
+    public function getData()
+    {
+        return $this->data ?? null;
     }
 
     public function __get($name)

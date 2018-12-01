@@ -22,12 +22,16 @@ abstract class HttpController
      * @param HttpRequest $request
      * @throws \Exception
      */
-    public function __construct(HttpRequest $request)
+    public function __construct()
+    {
+        $this->authentication();
+        $this->init();
+    }
+
+    public function initHttpRequest(HttpRequest $request)
     {
         $this->request = $request;
-        $this->authentication();
         $this->paramChecking();
-        $this->init();
     }
 
     /**

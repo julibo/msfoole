@@ -94,7 +94,8 @@ class Application
      */
     private function working()
     {
-        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
+        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace);
+        $controller->initHttpRequest($this->httpRequest);
         $method = $this->httpRequest->action;
         $data = $controller->$method();
         $result = ['code' => 0, 'msg' => '', 'data' => $data];
