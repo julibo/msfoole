@@ -48,8 +48,6 @@ abstract class HttpController
     {
         $execute = true;
         $allow = Config::get('application.allow.controller');
-        echo static::class;
-        var_dump($allow);
         if (is_array($allow)) {
             if (in_array(static::class, $allow)) {
                 $execute = false;

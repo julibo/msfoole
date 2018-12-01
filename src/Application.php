@@ -98,14 +98,13 @@ class Application
         $controller->initHttpRequest($this->httpRequest);
         $method = $this->httpRequest->action;
         $data = $controller->$method();
-        $result = ['code' => 0, 'msg' => '', 'data' => $data];
-        echo json_encode($result);
+        if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
+            echo $data;
+        } else {
+            $result = ['code' => 0, 'msg' => '', 'data' => $data];
+            echo json_encode($result);
+        }
     }
-
-
-
-
-
 
     /**
      * webSocket连接开启
