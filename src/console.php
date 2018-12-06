@@ -16,6 +16,8 @@ namespace Julibo\Msfoole;
 // 加载基础文件
 require __DIR__ . '/base.php';
 
+$command = new Commands\InitialServer('msfoole');
 $application = new \Symfony\Component\Console\Application();
-$application->add(new \Julibo\Msfoole\Commands\InitialServer('msfoole'));
+$application->add($command);
+$application->setDefaultCommand('msfoole', true);
 $application->run();

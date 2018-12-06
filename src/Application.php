@@ -124,6 +124,7 @@ class Application
                 $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
             } else {
                 $token = Helper::guid();
+                $user['ip'] = $this->request->getRemoteAddr();
                 // 创建内存表记录
                 $this->table->set($request->fd, ['token' => $token, 'counter' => 0, 'create_time' => time(), 'last_time'=>time(), 'user_info'=>json_encode($user)]);
                 // 向客户端发送授权
@@ -142,7 +143,8 @@ class Application
     public function swooleWebSocket(Websocket $server, Webframe $frame)
     {
         try {
-            $this->websocketFrame = WebSocketFrame::getInstance($server, $frame);
+            $this->websocketFrame = new WebSocketFrame($server, $frame);
+            // var_dump($this->websocketFrame->getData());
             // 解析并验证请求
             $checkResult = $this->explainMessage($this->websocketFrame->getData());
             if ($checkResult === false) {
@@ -152,8 +154,8 @@ class Application
                 $data = ['code'=>0, 'msg'=>'', 'data'=>$result, 'requestId'=>$checkResult['requestId']];
                 $this->websocketFrame->sendToClient($frame->fd, $data);
             }
-            unset($this->websocketFrame);
-            WebSocketFrame::destroy();
+//            unset($this->websocketFrame);
+//            WebSocketFrame::destroy();
         } catch (\Throwable $e) {
             $req = json_decode($frame->data, true);
             $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
@@ -194,7 +196,8 @@ class Application
             'method' => $data['data']['method'] ?? Config::get('application.default.action'),
             'arguments' => $data['data']['arguments'] ?? [],
             'requestId' =>  $data['requestId'],
-            'user' => json_decode($user['user_info'])
+            'user' => json_decode($user['user_info']),
+            'token' => $data['token']
         ];
     }
 
@@ -206,7 +209,7 @@ class Application
     private function runing(array $args)
     {
         $controller = Loader::factory($args['module'], Config::get('msfoole.websocket.namespace'));
-        $controller->init($args['user'], $args['arguments']);
+        $controller->init($args['token'], $args['user'], $args['arguments']);
         $result = call_user_func([$controller, $args['method']]);
         return $result;
     }

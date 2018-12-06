@@ -10,10 +10,9 @@
 // +----------------------------------------------------------------------
 // | 基础文件
 // +----------------------------------------------------------------------
-
 define('SMFOOLE_VERSION', '0.0.1');
 defined('DS') or define('DS', DIRECTORY_SEPARATOR);
-defined('ROOT_PATH') or define('ROOT_PATH', realpath(dirname(dirname($_SERVER['SCRIPT_FILENAME']))) . DS);
+defined('ROOT_PATH') or define('ROOT_PATH', realpath(dirname($_SERVER['SCRIPT_FILENAME'])) . DS);
 defined('APP_PATH') or define('APP_PATH', ROOT_PATH . 'app' . DS);
 defined('RUN_PATH') or define('RUN_PATH', ROOT_PATH . 'runtime' . DS);
 defined('CACHE_PATH') or define('CACHE_PATH', RUN_PATH . 'cache' . DS);
@@ -22,7 +21,6 @@ defined('LOG_PATH') or define('LOG_PATH', RUN_PATH . 'logs' . DS);
 defined('CONF_PATH') or define('CONF_PATH', ROOT_PATH . 'config' . DS);
 defined('CONF_EXT') or define('CONF_EXT', '.ini');
 defined('ENV_EXT') or define('ENV_EXT', '.yml');
-defined('RUN_ENV') or define('RUN_ENV', 'DEV');
 defined('CONTROLLER_NAMESPACE') or define('CONTROLLER_NAMESPACE', '\\App\\Controller\\');
 defined('SERVER_PID') or define('SERVER_PID', TEMP_PATH . 'msfoole.pid');
 
@@ -38,6 +36,8 @@ require ROOT_PATH . 'vendor/autoload.php';
 
 // todo 注册错误和异常处理机制
 \Julibo\Msfoole\Error::register();
+
+\Julibo\Msfoole\Facade\Config::loadFile(__DIR__ . '/project.yml', ENV_EXT);
 
 // 加载项目默认配置
 \Julibo\Msfoole\Facade\Config::loadFile(__DIR__ . '/project.yml', ENV_EXT);

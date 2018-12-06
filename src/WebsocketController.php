@@ -9,6 +9,12 @@ namespace Julibo\Msfoole;
 abstract class WebsocketController
 {
     /**
+     * 用户标识
+     * @var
+     */
+    protected $token;
+
+    /**
      * 当前用户
      * @var
      */
@@ -25,8 +31,9 @@ abstract class WebsocketController
      * @param $user
      * @param $params
      */
-    final public function init($user, $params)
+    final public function init($token, $user, $params)
     {
+        $this->token = $token;
         $this->user = $user;
         $this->params = $params;
     }

@@ -16,7 +16,7 @@ class WebSocketFrame implements \ArrayAccess
 
     private $fd;
 
-    private function __construct(Websocket $server, Webframe $frame)
+    public function __construct(Websocket $server, Webframe $frame)
     {
         $this->server = $server;
         $this->frame = $frame;

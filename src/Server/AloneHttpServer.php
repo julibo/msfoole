@@ -11,7 +11,6 @@ use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
 use Julibo\Msfoole\Cache;
 use Julibo\Msfoole\Channel;
-use Julibo\Msfoole\Loader;
 use Julibo\Msfoole\Interfaces\Server as BaseServer;
 
 class AloneHttpServer extends BaseServer
@@ -108,10 +107,17 @@ class AloneHttpServer extends BaseServer
                 if ($this->channelOpen) {
                     swoole_timer_tick(1000, function () {
                         $data = Channel::instance()->pop();
-                        if ($data !== false) {
-                            $controller = Loader::factory($data['class'], $data['namespace']);
-                            $result = call_user_func([$controller, $data['action']], $data['data']);
-                            $this->swoole->push($data['fd'], $result);
+                        if (!empty($data)) {
+                            // websocket 广播
+                            if ($data['type'] == 1) {
+                               foreach($this->table as $fd => $row)
+                               {
+                                   if ($row['token'] == $data['client']) {
+                                       $this->swoole->push($fd, json_encode($data));
+                                       break;
+                                   }
+                               }
+                            }
                         }
                     });
                 }
@@ -127,7 +133,7 @@ class AloneHttpServer extends BaseServer
                 }
                 if ($paths) {
                     $timer = Config::get('msfoole.monitor.interval') ?? 10;
-                    swoole_timer_tick($timer*60000, function () use($paths) {
+                    swoole_timer_tick($timer*6000, function () use($paths) {
                         foreach ($paths as $path) {
                             $dir      = new \RecursiveDirectoryIterator($path);
                             $iterator = new \RecursiveIteratorIterator($dir);
@@ -141,7 +147,7 @@ class AloneHttpServer extends BaseServer
                                     $this->lastMtime = $file->getMTime();
                                     echo '[update]' . $file . " reload...\n";
                                     $this->swoole->reload();
-                                    return;
+                                    break 2;
                                 }
                             }
                         }
