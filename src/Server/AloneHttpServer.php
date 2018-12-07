@@ -11,6 +11,7 @@ use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
 use Julibo\Msfoole\Cache;
 use Julibo\Msfoole\Channel;
+use Julibo\Msfoole\Loader;
 use Julibo\Msfoole\Interfaces\Server as BaseServer;
 
 class AloneHttpServer extends BaseServer
@@ -106,19 +107,31 @@ class AloneHttpServer extends BaseServer
                 $process->name("msfoole:monitor");
                 if ($this->channelOpen) {
                     swoole_timer_tick(1000, function () {
-                        $data = Channel::instance()->pop();
-                        if (!empty($data)) {
-                            // websocket 广播
-                            if ($data['type'] == 1) {
-                               foreach($this->table as $fd => $row)
-                               {
-                                   if ($row['token'] == $data['client']) {
-                                       $this->swoole->push($fd, json_encode($data));
-                                       break;
-                                   }
-                               }
+                        do {
+                            $data = Channel::instance()->pop();
+                            if (!empty($data)) {
+                                switch ($data['type']) {
+                                    case 2:
+                                        // 执行自定义方法
+                                        if ($data['class'] && $data['method']) {
+                                            $parameter = $data['parameter'] ?? [];
+                                            call_user_func_array([$data['class'], $data['method']], $parameter);
+                                        }
+                                        break;
+                                    case 1;
+                                        // websocket 广播
+                                        $this->swoole->push($data['client'], json_encode($data));
+                                        foreach($this->table as $fd => $row)
+                                        {
+                                            if ($row['token'] == $data['client']) {
+                                                $this->swoole->push($fd, json_encode($data));
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                }
                             }
-                        }
+                        } while ($data !== false);
                     });
                 }
                 if ($tableMonitor) {
@@ -135,14 +148,13 @@ class AloneHttpServer extends BaseServer
                     $timer = Config::get('msfoole.monitor.interval') ?? 10;
                     swoole_timer_tick($timer*6000, function () use($paths) {
                         foreach ($paths as $path) {
+                            $path = ROOT_PATH . $path;
                             $dir      = new \RecursiveDirectoryIterator($path);
                             $iterator = new \RecursiveIteratorIterator($dir);
-
                             foreach ($iterator as $file) {
                                 if (pathinfo($file, PATHINFO_EXTENSION) != 'php') {
                                     continue;
                                 }
-
                                 if ($this->lastMtime < $file->getMTime()) {
                                     $this->lastMtime = $file->getMTime();
                                     echo '[update]' . $file . " reload...\n";
@@ -191,13 +203,6 @@ class AloneHttpServer extends BaseServer
             $this->app->table = $this->table;
         }
         $this->app->initialize();
-//        $data = [
-//            'namespace' => '\\App\\Service\\',
-//            'class' =>'Robot',
-//            'action' =>'register',
-//            'data' => ['fd'=>1]
-//        ];
-//        Channel::instance()->push($data);
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
@@ -245,7 +250,6 @@ class AloneHttpServer extends BaseServer
     {
         // print_r($request);
         $this->app->swooleWebSocketOpen($server, $request);
-        $server->push($request->fd, 10000);
     }
 
     /**
