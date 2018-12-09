@@ -106,7 +106,16 @@ class AloneHttpServer extends BaseServer
             $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
                 $process->name("msfoole:monitor");
                 if ($this->channelOpen) {
-                    swoole_timer_tick(1000, function () {
+                    swoole_timer_tick(10000, function () {
+                        $notice = [
+                            'type' => 1, // websocket广播
+                            'client' => 1,
+                            'group' => 2,
+                            'result' => 1,
+                            'title' => '门诊缴费',
+                            'body' => [['title' => '门诊缴费', 'cost' => 100]],
+                        ];
+                        $this->swoole->push(1, json_encode($notice));
                         do {
                             $data = Channel::instance()->pop();
                             if (!empty($data)) {
@@ -120,7 +129,6 @@ class AloneHttpServer extends BaseServer
                                         break;
                                     case 1;
                                         // websocket 广播
-                                        $this->swoole->push($data['client'], json_encode($data));
                                         foreach($this->table as $fd => $row)
                                         {
                                             if ($row['token'] == $data['client']) {
