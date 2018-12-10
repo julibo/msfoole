@@ -106,16 +106,7 @@ class AloneHttpServer extends BaseServer
             $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
                 $process->name("msfoole:monitor");
                 if ($this->channelOpen) {
-                    swoole_timer_tick(10000, function () {
-                        $notice = [
-                            'type' => 1, // websocket广播
-                            'client' => 1,
-                            'group' => 2,
-                            'result' => 1,
-                            'title' => '门诊缴费',
-                            'body' => [['title' => '门诊缴费', 'cost' => 100]],
-                        ];
-                        $this->swoole->push(1, json_encode($notice));
+                    swoole_timer_tick(1000, function () {
                         do {
                             $data = Channel::instance()->pop();
                             if (!empty($data)) {
