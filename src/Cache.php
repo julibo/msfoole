@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole;
 
 class Cache
@@ -24,6 +34,7 @@ class Cache
      */
     protected $driver;
 
+
     public function __construct(array $config = [])
     {
         $this->config = $config;
@@ -33,7 +44,7 @@ class Cache
     public function init(array $options = [], $force = false)
     {
         if (is_null($this->handle) || $force) {
-            $this->handle = $this->connect($options);
+            $this->handle = $this->connect($options, $force);
         }
         return $this->handle;
     }
@@ -81,3 +92,4 @@ class Cache
     }
 
 }
+

@@ -1,11 +1,11 @@
 {
     "name": "julibo/msfoole",
-    "description": "基于swoole的简易微服务框架",
+    "description": "基于swoole的多进程API服务框架",
     "type": "library",
     "keywords": [
         "msfoole",
         "swoole",
-        "php微服务框架"
+        "API服务框架"
     ],
     "homepage": "http://msfoole.julibo.com/",
     "license": "Apache-2.0",
@@ -25,7 +25,7 @@
     ],
     "require": {
         "php": ">=7.2.0",
-        "ext-swoole": ">=2.1.3",
+        "ext-swoole": ">=4.2",
         "guzzlehttp/guzzle": "~6.3.0",
         "symfony/console": "~4.1.6",
         "symfony/yaml": "^4.1",

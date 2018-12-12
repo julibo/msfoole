@@ -1,4 +1,13 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole;
 
@@ -8,12 +17,14 @@ use Swoole\Websocket\Server as Websocket;
 use Swoole\WebSocket\Frame as Webframe;
 use Julibo\Msfoole\Facade\Config;
 use Julibo\Msfoole\Facade\Cookie;
+use Julibo\Msfoole\Facade\Log;
 
 class Application
 {
     // 开始时间和内存占用
     private $beginTime;
     private $beginMem;
+
     /**
      * @var
      */
@@ -48,6 +59,7 @@ class Application
      * @var
      */
     private $httpRequest;
+
     /**
      * http应答
      * @var
@@ -70,16 +82,32 @@ class Application
     }
 
     /**
+     * 析构
+     */
+    public function destruct()
+    {
+        $executionTime = round(microtime(true) - $this->beginTime, 6) . 'S';
+        $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
+        Log::info('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
+        if ($executionTime > Config::get('log.slow_time')) {
+            Log::slow('当前方法执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
+        }
+    }
+
+
+    /**
      * 处理http请求
      * @param SwooleRequest $request
      * @param SwooleResponse $response
      */
     public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
+        ob_start();
         try {
-            ob_start();
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
+            Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
+            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
             Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
             $this->working();
         } catch (\Throwable $e) {
@@ -94,10 +122,8 @@ class Application
      */
     private function working()
     {
-        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace);
-        $controller->initHttpRequest($this->httpRequest);
-        $method = $this->httpRequest->action;
-        $data = $controller->$method();
+        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
+        $data = call_user_func([$controller, $this->httpRequest->action]);
         if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
         } else {

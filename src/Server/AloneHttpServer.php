@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole\Server;
 
 use Swoole\Http\Request as SwooleRequest;
@@ -9,16 +19,23 @@ use Swoole\Process;
 use Swoole\Table;
 use Julibo\Msfoole\Application;
 use Julibo\Msfoole\Facade\Config;
+use Julibo\Msfoole\Facade\Log;
 use Julibo\Msfoole\Cache;
 use Julibo\Msfoole\Channel;
-use Julibo\Msfoole\Loader;
 use Julibo\Msfoole\Interfaces\Server as BaseServer;
 
 class AloneHttpServer extends BaseServer
 {
-
+    /**
+     * SwooleServer类型
+     * @var string
+     */
     protected $serverType = 'http';
 
+    /**
+     * 支持的响应事件
+     * @var array
+     */
     protected $event = [
         'Start',
         'Shutdown',
@@ -34,12 +51,16 @@ class AloneHttpServer extends BaseServer
         'Request'
     ];
 
+    /**
+     * 应用服务
+     * @var
+     */
     protected $app;
 
     /**
-     * websocket状态内存表
+     * 客户端连接内存表
      */
-    private $table;
+    protected $table;
 
     /**
      * 全局缓存
@@ -48,13 +69,43 @@ class AloneHttpServer extends BaseServer
     protected $cache;
 
     /**
-     * 开启队列投递服务
+     * 初始化
      */
-    protected $channelOpen = false;
-
-    public function createTable()
+    protected function init()
     {
-        $this->table = new table(Config::get('msfoole.table.size'));
+        $this->option['upload_tmp_dir'] = TEMP_PATH;
+        $this->option['http_parse_post'] = true;
+        $this->config = array_merge($this->config, Config::get('msfoole') ?? []);
+    }
+
+    /**
+     * 启动辅助逻辑
+     */
+    protected function startLogic()
+    {
+        # 创建全局队列
+        $channelSwitch = $this->config['channel']['switch'] ?? false;
+        if ($channelSwitch) {
+            Channel::instance($this->config['channel']['size'] ?? 65536);
+            $this->workingPool($this->config['channel']['pool'] ?? 1);
+        }
+        # 创建客户端连接内存表
+        if ($this->serverType == 'socket') {
+            $this->createTable();
+        }
+        # 开启全局缓存
+        $cacheConfig = Config::get('cache.default') ?? [];
+        $this->cache = new Cache($cacheConfig);
+        # 开启异步定时监控
+        $this->monitorProcess();
+    }
+
+    /**
+     * 创建客户端连接内存表
+     */
+    private function createTable()
+    {
+        $this->table = new table($this->config['table']['size'] ?? 1024);
         $this->table->column('token', table::TYPE_STRING, 32);
         $this->table->column('counter', table::TYPE_INT, 4);
         $this->table->column('create_time', table::TYPE_INT, 4);
@@ -63,36 +114,61 @@ class AloneHttpServer extends BaseServer
         $this->table->create();
     }
 
-    protected function init()
+    /**
+     * 创建队列工作池
+     * @param int $num
+     */
+    private function workingPool(int $num = 1)
     {
-        $this->option['upload_tmp_dir'] = TEMP_PATH;
-        $this->option['http_parse_post'] = true;
-    }
-
-    protected function startLogic()
-    {
-        $channelSize = Config::get('msfoole.channel.size');
-        if ($channelSize) {
-            Channel::instance($channelSize);
-            $this->channelOpen = true;
+        $pool = [];
+        for ($i = 0; $i < $num; $i++) {
+            $pool[$i] = new Process(function (Process $process) {
+                $process->name("msfoole:working");
+                // 初始化日志
+                $logConfig = Config::get("log") ?? [];
+                Log::init($logConfig);
+                do {
+                    $data = Channel::instance()->pop();
+                    if (!empty($data)) {
+                        switch ($data['type']) {
+                            case 2:
+                                // 执行自定义方法
+                                if ($data['class'] && $data['method']) {
+                                    $parameter = $data['parameter'] ?? [];
+                                    call_user_func_array([$data['class'], $data['method']], $parameter);
+                                }
+                                break;
+                            case 1;
+                                // 发送广播
+                                foreach($this->table as $fd => $row)
+                                {
+                                    if ($row['token'] == $data['client']) {
+                                        $this->swoole->push($fd, json_encode($data));
+                                        break;
+                                    }
+                                }
+                                break;
+                            default:
+                                // 日志记录
+                                if (!empty($data['log'])) {
+                                    Log::saveData($data['log']);
+                                }
+                                break;
+                        }
+                    } else {
+                        sleep(1);
+                    }
+                } while (true);
+            });
+            $this->swoole->addProcess($pool[$i]);
         }
-        # 创建websocket状态内存表
-        if ($this->serverType == 'socket') {
-            $this->createTable();
-        }
-
-        # 开启全局缓存
-        $cacheConfig = Config::get('cache.default') ?? [];
-        $this->cache = new Cache($cacheConfig);
-        # 开启监控
-        $this->monitorProcess();
     }
 
     /**
      * 文件监控，不包含配置变化
      * table内存表监控
      */
-    protected function monitorProcess()
+    private function monitorProcess()
     {
         $tableMonitor = false;
         if ($this->cache) {
@@ -101,40 +177,13 @@ class AloneHttpServer extends BaseServer
                 $tableMonitor = true;
             }
         }
-        $paths = Config::get('msfoole.monitor.path');
-        if ($paths || $tableMonitor || $this->channelOpen) {
-            $mp = new Process(function (Process $process) use ($paths, $tableMonitor) {
+        $paths = $this->config['monitor']['path'] ?? null;
+        if ($paths || $tableMonitor) {
+            $monitor = new Process(function (Process $process) use ($paths, $tableMonitor) {
                 $process->name("msfoole:monitor");
-                if ($this->channelOpen) {
-                    swoole_timer_tick(1000, function () {
-                        do {
-                            $data = Channel::instance()->pop();
-                            if (!empty($data)) {
-                                switch ($data['type']) {
-                                    case 2:
-                                        // 执行自定义方法
-                                        if ($data['class'] && $data['method']) {
-                                            $parameter = $data['parameter'] ?? [];
-                                            call_user_func_array([$data['class'], $data['method']], $parameter);
-                                        }
-                                        break;
-                                    case 1;
-                                        // websocket 广播
-                                        foreach($this->table as $fd => $row)
-                                        {
-                                            if ($row['token'] == $data['client']) {
-                                                $this->swoole->push($fd, json_encode($data));
-                                                break;
-                                            }
-                                        }
-                                        break;
-                                }
-                            }
-                        } while ($data !== false);
-                    });
-                }
                 if ($tableMonitor) {
-                    swoole_timer_tick(60000, function () {
+                    $rate = $this->config['cache']['rate'] ?? 1;
+                    swoole_timer_tick($rate * 60000, function () {
                         $timestamp = time();
                         $table = $this->cache->getTable();
                         foreach ($table as $key => $val) {
@@ -144,8 +193,8 @@ class AloneHttpServer extends BaseServer
                     });
                 }
                 if ($paths) {
-                    $timer = Config::get('msfoole.monitor.interval') ?? 10;
-                    swoole_timer_tick($timer*6000, function () use($paths) {
+                    $timer = $this->config['monitor']['interval'] ?? 10;
+                    swoole_timer_tick($timer * 1000, function () use($paths) {
                         foreach ($paths as $path) {
                             $path = ROOT_PATH . $path;
                             $dir      = new \RecursiveDirectoryIterator($path);
@@ -165,13 +214,13 @@ class AloneHttpServer extends BaseServer
                     });
                 }
             });
-            $this->swoole->addProcess($mp);
+            $this->swoole->addProcess($monitor);
         }
     }
 
     public function onStart(\Swoole\Server $server)
     {
-        var_dump("主进程启动");
+        swoole_set_process_name("msfoole:master");
     }
 
     public function onShutdown(\Swoole\Server $server)
@@ -182,7 +231,6 @@ class AloneHttpServer extends BaseServer
     public function onManagerStart(\Swoole\Server $server)
     {
         swoole_set_process_name("msfoole:manager");
-        var_dump("管理进程启动");
     }
 
     public function onManagerStop(\Swoole\Server $server)
@@ -193,6 +241,10 @@ class AloneHttpServer extends BaseServer
     public function onWorkerStart(\Swoole\Server $server, int $worker_id)
     {
         swoole_set_process_name("msfoole:worker");
+        var_dump("worker进程启动");
+        // 初始化日志
+        $logConfig = Config::get("log") ?? [];
+        Log::init($logConfig);
         // 应用实例化
         $this->app = new Application();
         // Swoole Server保存到容器
@@ -201,12 +253,11 @@ class AloneHttpServer extends BaseServer
         if ($this->table) {
             $this->app->table = $this->table;
         }
-        $this->app->initialize();
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
     {
-        var_dump("worker进程停止");
+        var_dump("worker进程终止");
     }
 
     public function onWorkerExit(\Swoole\Server $server, int $worker_id)
@@ -222,9 +273,9 @@ class AloneHttpServer extends BaseServer
     public function onClose(\Swoole\Server $server, int $fd, int $reactorId)
     {
         // 销毁内存表记录
-        if (!is_null($this->table) && $this->table->exist($fd))
+        if (!is_null($this->table) && $this->table->exist($fd)) {
             $this->table->del($fd);
-
+        }
     }
 
     /**
@@ -236,7 +287,15 @@ class AloneHttpServer extends BaseServer
     {
         // 执行应用并响应
         // print_r($request);
-        $this->app->swooleHttp($request, $response);
+        $uri = $request->server['request_uri'];
+        if ($uri == '/favicon.ico') {
+            $response->status(404);
+            $response->end();
+        } else {
+            $this->app->initialize();
+            $this->app->swooleHttp($request, $response);
+            $this->app->destruct();
+        }
     }
 
 
@@ -247,6 +306,7 @@ class AloneHttpServer extends BaseServer
      */
     public function WebsocketonOpen(Websocket $server, SwooleRequest $request)
     {
+        // 开启websocket连接
         // print_r($request);
         $this->app->swooleWebSocketOpen($server, $request);
     }
@@ -258,8 +318,10 @@ class AloneHttpServer extends BaseServer
      */
     public function WebsocketonMessage(Websocket $server, Webframe $frame)
     {
-        // print_r("receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}");
         // 执行应用并响应
+        // print_r("receive from {$frame->fd}:{$frame->data},opcode:{$frame->opcode},fin:{$frame->finish}");
+        $this->app->initialize();
         $this->app->swooleWebSocket($server, $frame);
+        $this->app->destruct();
     }
 }

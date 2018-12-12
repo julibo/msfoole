@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole;
 
 use Julibo\Msfoole\Facade\Config;
@@ -41,7 +51,9 @@ class Cookie
         // httponly设置
         'httponly'  => '',
         // 用户标识
-        'token' => '_token'
+        'token' => '_token',
+        // 自动授时临界值
+        'auto_selling' => 600,
     ];
 
     /**
@@ -68,8 +80,11 @@ class Cookie
     {
         $key = $this->config['prefix'] . $key;
         if ($expire == 0) {
-            $expire = $this->config['expire'];
+            $expire = $this->config['expire'] + time();
+        } else {
+            $expire = time()+$expire;
         }
+        $expire = strtotime('+8 hours', $expire);
         $path = $this->config['path'];
         $domain = $this->config['domain'];
         $secure = $this->config['secure'] ? true : false;
@@ -91,13 +106,14 @@ class Cookie
     /**
      * 设置用户token
      * @param array $user
+     * @param null $uuid
      */
-    public function setToken(array $user = [])
+    public function setToken(array $user = [], $uuid = null)
     {
         $token = $this->config['token'] ?: '_token';
-        $uuid = Helper::guid();
-        $this->setCookie($token, $uuid);
-        $this->cache->set($uuid, json_encode($user), $this->config['expire']);
+        $uuid = $uuid ?? Helper::guid();
+        $this->setCookie($token, $uuid, $this->config['expire']);
+        $this->cache->set($uuid, $user, $this->config['expire']);
     }
 
     /**
@@ -119,11 +135,14 @@ class Cookie
     {
         $token = $this->getToken();
         $user = $this->cache->get($token);
-        if ($user === null) {
-            return null;
+        if ($user) {
+            $deadline = $this->cache->getPeriod($token);
+            if ($deadline < $this->config['auto_selling']) {
+                $this->setToken($user, $token);
+            }
+            return $user;
         } else {
-            $this->cache->set($token, $user, $this->config['expire']);
-            return json_decode($user);
+            return null;
         }
     }
 

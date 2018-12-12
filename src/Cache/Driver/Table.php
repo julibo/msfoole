@@ -1,8 +1,19 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole\Cache\Driver;
 
 use Julibo\Msfoole\Cache\Driver;
 use Julibo\Msfoole\CacheTable;
+use Julibo\Msfoole\Helper;
 
 class Table extends Driver
 {
@@ -28,10 +39,18 @@ class Table extends Driver
     {
         $key = $this->getCacheKey($name);
         $value = $this->handler->get($key, $default);
-        if ($this->options['serialize'] && !is_scalar($value)) {
-            $value = json_decode($value, true);
+        $arrValue = Helper::isJson($value, true);
+        if ($this->options['serialize'] && $arrValue) {
+            $value = $arrValue;
         }
         return $value;
+    }
+
+    public function getPeriod($name)
+    {
+        $key = $this->getCacheKey($name);
+        $deadline = $this->handler->getPeriod($key);
+        return $deadline;
     }
 
     public function set($name, $value, $expire = null)
@@ -52,12 +71,10 @@ class Table extends Driver
     {
         if ($this->has($name)) {
             $value  = $this->get($name) + $step;
-            $expire = 0;
         } else {
             $value  = $step;
-            $expire = 0;
         }
-        return $this->set($name, $value, $expire) ? $value : false;
+        return $this->set($name, $value) ? $value : false;
     }
 
     public function dec($name, $step = 1)
@@ -74,7 +91,8 @@ class Table extends Driver
 
     public function del($name)
     {
-        return $this->handler->del($name);
+        $key = $this->getCacheKey($name);
+        return $this->handler->del($key);
     }
 
     public function clear()

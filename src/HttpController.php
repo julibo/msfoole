@@ -1,7 +1,13 @@
 <?php
-/**
- * Http控制器基类
- */
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole;
 
@@ -22,16 +28,12 @@ abstract class HttpController
      * @param HttpRequest $request
      * @throws \Exception
      */
-    public function __construct()
-    {
-        $this->authentication();
-        $this->init();
-    }
-
-    public function initHttpRequest(HttpRequest $request)
+    public function __construct($request)
     {
         $this->request = $request;
         $this->paramChecking();
+        $this->authentication();
+        $this->init();
     }
 
     /**
@@ -58,7 +60,7 @@ abstract class HttpController
             }
         }
         if ($execute) {
-            $user = Cookie::getTokenCache();
+            $user = $this->getUserByToken();
             if ($user) {
                 $this->user = $user;
             } else {
@@ -75,4 +77,22 @@ abstract class HttpController
         $this->params = $this->request->params;
     }
 
+    /**
+     * 向客户端授权
+     * @param array $user
+     */
+    protected function setToken(array $user)
+    {
+        Cookie::setToken($user);
+    }
+
+    /**
+     * 通过token获取用户信息
+     * @return array
+     */
+    protected function getUserByToken() : array
+    {
+        $user = Cookie::getTokenCache();
+        return $user;
+    }
 }

@@ -22,4 +22,20 @@ class Helper
         $uuid = str_replace(array('-', '{', '}'), '', $uuid);
         return $uuid;
     }
+
+    /**
+     * 判断字符串是否为 Json 格式
+     *
+     * @param  string     $data  Json 字符串
+     * @param  bool       $assoc 是否返回关联数组。默认返回对象
+     *
+     * @return bool|array 成功返回转换后的对象或数组，失败返回 false
+     */
+    public static function isJson($data = '', $assoc = false) {
+        $data = json_decode($data, $assoc);
+        if ($data && (is_object($data)) || (is_array($data) && !empty(current($data)))) {
+            return $data;
+        }
+        return false;
+    }
 }

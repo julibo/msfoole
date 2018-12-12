@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole;
 
 use Julibo\Msfoole\Facade\Config;
@@ -56,6 +66,17 @@ class CacheTable
             return false;
         }
         return $data['data'];
+    }
+
+    public function getPeriod($key)
+    {
+        $data = $this->table->get($key);
+        if (0 == $data['time']) {
+            $deadline = true;
+        } else {
+            $deadline = $data['time'] - time();
+        }
+        return $deadline;
     }
 
     public function exist($key)

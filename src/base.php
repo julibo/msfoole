@@ -37,8 +37,6 @@ require ROOT_PATH . 'vendor/autoload.php';
 // todo 注册错误和异常处理机制
 \Julibo\Msfoole\Error::register();
 
-\Julibo\Msfoole\Facade\Config::loadFile(__DIR__ . '/project.yml', ENV_EXT);
-
 // 加载项目默认配置
 \Julibo\Msfoole\Facade\Config::loadFile(__DIR__ . '/project.yml', ENV_EXT);
 

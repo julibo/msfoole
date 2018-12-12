@@ -1,14 +1,12 @@
 <?php
 // +----------------------------------------------------------------------
-// | msfoole [ 基于swoole的简易微服务框架 ]
+// | msfoole [ 基于swoole的多进程API服务框架 ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2018 http://julibo.com All rights reserved.
 // +----------------------------------------------------------------------
 // | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
-// +----------------------------------------------------------------------
-// | http requset 请求处理类
 // +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole;
@@ -88,6 +86,12 @@ class HttpRequest
     ];
 
     /**
+     * 唯一识别码
+     * @var
+     */
+    private $identification;
+
+    /**
      * 命名空间
      * @var
      */
@@ -154,6 +158,7 @@ class HttpRequest
         $this->header = $header;
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
+        $this->identification = $this->header['identification_code'] ?? null;
         return $this;
     }
 

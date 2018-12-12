@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole\Cache;
 
 /**
@@ -74,6 +84,13 @@ abstract class Driver
     abstract public function clear();
 
     /**
+     * 获取缓存剩余有效期
+     * @param $name
+     * @return mixed
+     */
+    abstract public function getPeriod($name);
+
+    /**
      * 获取实际缓存标识
      * @param $name
      * @return string
@@ -108,3 +125,4 @@ abstract class Driver
         return $this->handler;
     }
 }
+

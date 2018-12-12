@@ -1,6 +1,6 @@
 <?php
 // +----------------------------------------------------------------------
-// | msfoole [ 基于swoole的简易微服务框架 ]
+// | msfoole [ 基于swoole的多进程API服务框架 ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2018 http://julibo.com All rights reserved.
 // +----------------------------------------------------------------------
@@ -23,7 +23,7 @@ abstract class Process
      * 进程入口
      * @return mixed
      */
-    public static function main($param = null)
+    public static function main()
     {
         static::init();
     }

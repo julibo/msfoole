@@ -1,6 +1,6 @@
 <?php
 /**
- * swoole队列
+ * 共享内存队列
  */
 
 namespace Julibo\Msfoole;
@@ -42,3 +42,4 @@ class Channel
     }
 
 }
+
