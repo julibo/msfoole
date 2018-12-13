@@ -253,6 +253,7 @@ class AloneHttpServer extends BaseServer
         if ($this->table) {
             $this->app->table = $this->table;
         }
+
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)

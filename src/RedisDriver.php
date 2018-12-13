@@ -67,9 +67,6 @@ class RedisDriver
     {
         $drive = md5(json_encode($config));
         if (!self::$instance[$drive]) {
-            if (empty($config)) {
-                $config = Config::get('cache.redis');
-            }
             self::$instance[$drive] = new self($config);
         }
         return self::$instance[$drive];
@@ -153,7 +150,6 @@ class RedisDriver
                     $this->redis->del($li);
                 }
             }
-            $lists = array_merge($lists, $list);
         } while ($iterator != 0);
         return true;
     }
@@ -168,7 +164,6 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $key = $this->getRealKey($key);
                 return $this->redis->GET($key);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
@@ -191,16 +186,14 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $key = $this->getRealKey($key);
                 if (is_null($expire)) {
                     $expire = $this->config['expire'];
                 }
                 if ($expire) {
-                    $this->setex($key, $expire, $val);
+                    return $this->redis->setex($key, $expire, $val);
                 } else {
-                    $this->set($key, $val);
+                    return $this->redis->set($key, $val);
                 }
-                return $this->redis->set($key, $val);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();
@@ -220,8 +213,7 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $key = $this->getRealKey($key);
-                return $this->redis->del($key);
+                return $this->redis->DEL($key);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();
@@ -242,7 +234,6 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $key = $this->getRealKey($key);
                 return $this->redis->incrby($key, $step);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
@@ -264,7 +255,6 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $key = $this->getRealKey($key);
                 return $this->redis->decrby($key, $step);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
@@ -273,17 +263,6 @@ class RedisDriver
             }
         }
         return false;
-    }
-
-    /**
-     * 获取真实key
-     * @param $key
-     * @return string
-     */
-    private function getRealKey($key)
-    {
-        $key = $this->config['prefix'] . $key;
-        return $key;
     }
 
     /**

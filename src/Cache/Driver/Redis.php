@@ -1,12 +1,19 @@
 <?php
-/**
- * Redis 缓存类
- */
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole\Cache\Driver;
 
 use Julibo\Msfoole\RedisDriver;
 use Julibo\Msfoole\Cache\Driver;
+use Julibo\Msfoole\Helper;
 
 class Redis extends Driver
 {
@@ -19,17 +26,28 @@ class Redis extends Driver
 
     public function has($name)
     {
-        return $this->handler->exists($name);
+        $key = $this->getCacheKey($name);
+        return $this->handler->EXISTS($key);
+    }
+
+
+    public function getPeriod($name)
+    {
+        $key = $this->getCacheKey($name);
+        $deadline = $this->handler->TTL($key);
+        return $deadline;
     }
 
     public function get($name, $default = null)
     {
-        $value = $this->handler->get($name);
+        $key = $this->getCacheKey($name);
+        $value = $this->handler->get($key);
         if (!$value) {
             $value = $default;
         } else {
-            if ($this->options['serialize'] && $this->isJson($value)) {
-                $value = json_decode($value);
+            $arrValue = Helper::isJson($value, true);
+            if ($this->options['serialize'] && $arrValue) {
+                $value = $arrValue;
             }
         }
         return $value;
@@ -38,9 +56,10 @@ class Redis extends Driver
     public function set($name, $value, $expire = null)
     {
         if (!is_scalar($value) && $this->options['serialize']) {
-            $value = json_encode($value);
+            $value = json_encode($value, JSON_UNESCAPED_UNICODE);
         }
-        $this->handler->set($name, $value, $expire);
+        $key = $this->getCacheKey($name);
+        $this->handler->set($key, $value, $expire);
     }
 
     public function clear()
@@ -50,17 +69,20 @@ class Redis extends Driver
 
     public function del($name)
     {
-        return $this->handler->del($name);
+        $key = $this->getCacheKey($name);
+        return $this->handler->del($key);
     }
 
     public function inc($name, $step = 1)
     {
-        return $this->handler->incrby($name, $step);
+        $key = $this->getCacheKey($name);
+        return $this->handler->incrby($key, $step);
     }
 
     public function dec($name, $step = 1)
     {
-        return $this->handler->decrby($name, $step);
+        $key = $this->getCacheKey($name);
+        return $this->handler->decrby($key, $step);
     }
 
 }
