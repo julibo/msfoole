@@ -1,6 +1,6 @@
 <?php
 // +----------------------------------------------------------------------
-// | msfoole [ 基于swoole的简易微服务框架 ]
+// | msfoole [ 基于swoole的多进程API服务框架 ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2018 http://julibo.com All rights reserved.
 // +----------------------------------------------------------------------
@@ -8,8 +8,7 @@
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
-// | 基础文件
-// +----------------------------------------------------------------------
+
 define('SMFOOLE_VERSION', '0.0.1');
 defined('DS') or define('DS', DIRECTORY_SEPARATOR);
 defined('ROOT_PATH') or define('ROOT_PATH', realpath(dirname($_SERVER['SCRIPT_FILENAME'])) . DS);
@@ -26,7 +25,7 @@ defined('SERVER_PID') or define('SERVER_PID', TEMP_PATH . 'msfoole.pid');
 
 // 环境常量
 define('IS_CLI', PHP_SAPI == 'cli' ? true : false);
-define('IS_WIN', strpos(PHP_OS, 'WIN') !== false);
+define('IS_DARWIN', strpos(PHP_OS, 'Darwin') !== false);
 
 if (!IS_CLI) {
     exit('仅限命令行模式下运行');

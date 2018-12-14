@@ -1,7 +1,13 @@
 <?php
-/**
- * websocket控制器基类
- */
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole;
 
@@ -28,10 +34,11 @@ abstract class WebsocketController
 
     /**
      * 初始化方法
+     * @param $token
      * @param $user
      * @param $params
      */
-    final public function init($token, $user, $params)
+    final public function init(string $token, array $user, array $params)
     {
         $this->token = $token;
         $this->user = $user;

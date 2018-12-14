@@ -1,4 +1,14 @@
 <?php
+// +----------------------------------------------------------------------
+// | msfoole [ 基于swoole的多进程API服务框架 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2018 http://julibo.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: carson <yuzhanwei@aliyun.com>
+// +----------------------------------------------------------------------
+
 namespace Julibo\Msfoole;
 
 class Helper
@@ -38,4 +48,12 @@ class Helper
         }
         return false;
     }
+
+    public static function setProcessTitle($title)
+    {
+        if (!IS_DARWIN && function_exists('swoole_set_process_name')) {
+            swoole_set_process_name($title);
+        }
+    }
+
 }

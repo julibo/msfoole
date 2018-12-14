@@ -11,6 +11,7 @@
 
 namespace Julibo\Msfoole\Server;
 
+use Julibo\Msfoole\Helper;
 use Swoole\Http\Request as SwooleRequest;
 use Swoole\Http\Response as SwooleResponse;
 use Swoole\Websocket\Server as Websocket;
@@ -123,7 +124,7 @@ class AloneHttpServer extends BaseServer
         $pool = [];
         for ($i = 0; $i < $num; $i++) {
             $pool[$i] = new Process(function (Process $process) {
-                $process->name("msfoole:working");
+                Helper::setProcessTitle("msfoole:pool");
                 // 初始化日志
                 $logConfig = Config::get("log") ?? [];
                 Log::init($logConfig);
@@ -180,7 +181,7 @@ class AloneHttpServer extends BaseServer
         $paths = $this->config['monitor']['path'] ?? null;
         if ($paths || $tableMonitor) {
             $monitor = new Process(function (Process $process) use ($paths, $tableMonitor) {
-                $process->name("msfoole:monitor");
+                Helper::setProcessTitle("msfoole:monitor");
                 if ($tableMonitor) {
                     $rate = $this->config['cache']['rate'] ?? 1;
                     swoole_timer_tick($rate * 60000, function () {
@@ -220,28 +221,27 @@ class AloneHttpServer extends BaseServer
 
     public function onStart(\Swoole\Server $server)
     {
-        swoole_set_process_name("msfoole:master");
+        Helper::setProcessTitle("msfoole:master");
     }
 
     public function onShutdown(\Swoole\Server $server)
     {
-        var_dump("主进程结束");
+        echo "主进程结束";
     }
 
     public function onManagerStart(\Swoole\Server $server)
     {
-        swoole_set_process_name("msfoole:manager");
+        Helper::setProcessTitle("msfoole:manager");
     }
 
     public function onManagerStop(\Swoole\Server $server)
     {
-        var_dump("管理进程停止");
+        echo "管理进程停止";
     }
 
     public function onWorkerStart(\Swoole\Server $server, int $worker_id)
     {
-        swoole_set_process_name("msfoole:worker");
-        var_dump("worker进程启动");
+        Helper::setProcessTitle("msfoole:worker");
         // 初始化日志
         $logConfig = Config::get("log") ?? [];
         Log::init($logConfig);
@@ -258,17 +258,17 @@ class AloneHttpServer extends BaseServer
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
     {
-        var_dump("worker进程终止");
+        echo "worker进程终止";
     }
 
     public function onWorkerExit(\Swoole\Server $server, int $worker_id)
     {
-        var_dump("worker进程退出");
+        echo "worker进程退出";
     }
 
     public function onWorkerError(\Swoole\Server $serv, int $worker_id, int $worker_pid, int $exit_code, int $signal)
     {
-        var_dump("worker进程异常");
+        echo sprintf("worker进程异常:[%d] %d 退出的状态码为%d, 退出的信号为%d", $worker_pid, $worker_id, $exit_code, $signal);
     }
 
     public function onClose(\Swoole\Server $server, int $fd, int $reactorId)

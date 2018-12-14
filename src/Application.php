@@ -66,6 +66,10 @@ class Application
      */
     private $httpResponse;
 
+    /**
+     * 异常信息
+     * @var array
+     */
     public static $error = [
         'AUTH_FAILED' => ['code' => 10000, 'msg' => '认证失败'],
         'CON_EXCEPTION' => ['code' => 10001, 'msg' => '连接异常'],
@@ -79,7 +83,6 @@ class Application
     {
         $this->beginTime = microtime(true);
         $this->beginMem  = memory_get_usage();
-        ob_start();
     }
 
     /**
@@ -95,7 +98,6 @@ class Application
         }
     }
 
-
     /**
      * 处理http请求
      * @param SwooleRequest $request
@@ -105,6 +107,7 @@ class Application
     public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
          try {
+             ob_start();
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
@@ -129,6 +132,7 @@ class Application
      */
     private function working()
     {
+        throw new Exception('worinmi');
         $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
         $data = call_user_func([$controller, $this->httpRequest->action]);
         if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
@@ -170,7 +174,7 @@ class Application
                 $server->push($request->fd, $token);
             }
         } catch (\Throwable $e) {
-           $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
+           $server->disconnect($request->fd, self::$error['CON_EXCEPTION']['code'], self::$error['CON_EXCEPTION']['msg']);
         }
     }
 
@@ -178,27 +182,32 @@ class Application
      * 处理websocket请求
      * @param Websocket $server
      * @param Webframe $frame
+     * @throws \Throwable
      */
     public function swooleWebSocket(Websocket $server, Webframe $frame)
     {
         try {
             $this->websocketFrame = new WebSocketFrame($server, $frame);
-            // var_dump($this->websocketFrame->getData());
             // 解析并验证请求
             $checkResult = $this->explainMessage($this->websocketFrame->getData());
             if ($checkResult === false) {
                 $this->websocketFrame->disconnect($frame->fd, self::$error['SIGN_EXCEPTION']['code'], self::$error['SIGN_EXCEPTION']['msg']);
             } else {
                 $result = $this->runing($checkResult);
-                $data = ['code'=>0, 'msg'=>'', 'data'=>$result, 'requestId'=>$checkResult['requestId']];
+                if (Config::get('application.debug')) {
+                    $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
+                    $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
+                    $data = ['code'=>0, 'msg'=>'', 'data'=>$result, 'requestId'=>$checkResult['requestId'], 'executionTime' =>$executionTime, 'consumeMem' => $consumeMem];
+                } else {
+                    $data = ['code'=>0, 'msg'=>'', 'data'=>$result, 'requestId'=>$checkResult['requestId']];
+                }
                 $this->websocketFrame->sendToClient($frame->fd, $data);
             }
-//            unset($this->websocketFrame);
-//            WebSocketFrame::destroy();
         } catch (\Throwable $e) {
             $req = json_decode($frame->data, true);
             $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
             $this->websocketFrame->sendToClient($frame->fd, $data);
+            throw $e;
         }
     }
 

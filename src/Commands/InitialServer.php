@@ -39,7 +39,7 @@ class InitialServer extends Command implements Console
     public function configure()
     {
         $this->setName('msfoole')
-            ->setProcessTitle('msfoole:master')
+            // ->setProcessTitle('msfoole:master') // 存在兼容问题
             ->setDescription('msfoole命令行工具')
             ->setHelp('msfoole是基于swoole的多进程API服务框架')
             ->addArgument('action', InputArgument::REQUIRED, '执行操作：可选择值为start、stop、reload、restart')
