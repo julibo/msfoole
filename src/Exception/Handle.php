@@ -1,6 +1,6 @@
 <?php
 // +----------------------------------------------------------------------
-// | msfoole [ 基于swoole的简易微服务框架 ]
+// | msfoole [ 基于swoole的多进程API服务框架 ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2018 http://julibo.com All rights reserved.
 // +----------------------------------------------------------------------
@@ -19,17 +19,20 @@ use Chency147\CliMessage\Style;
 
 class Handle
 {
-    protected $render;
 
+    /**
+     * 忽略的异常
+     * @var array
+     */
     protected $ignoreReport = [
-        '\\Julibo\\Msfoole\\Exception\\HttpException',
+        // '\\Julibo\\Msfoole\\Exception\\HttpException',
     ];
 
-    public function setRender($render)
-    {
-        $this->render = $render;
-    }
-
+    /**
+     * 判断忽略异常
+     * @param Exception $exception
+     * @return bool
+     */
     protected function isIgnoreReport(Exception $exception)
     {
         foreach ($this->ignoreReport as $class) {
@@ -40,6 +43,10 @@ class Handle
         return false;
     }
 
+    /**
+     * 异常报告
+     * @param Exception $exception
+     */
     public function report(Exception $exception)
     {
         if (!$this->isIgnoreReport($exception)) {
@@ -62,10 +69,15 @@ class Handle
             if (Config::get('log.record_trace')) {
                 $log .= "\r\n" . $exception->getTraceAsString();
             }
-            Log::record($log, 'error');
+            Log::error($log);
         }
     }
 
+    /**
+     * 获取异常码
+     * @param Exception $exception
+     * @return int|mixed
+     */
     protected function getCode(Exception $exception)
     {
         $code = $exception->getCode();
@@ -76,12 +88,14 @@ class Handle
         return $code;
     }
 
+    /**
+     * 获取异常消息
+     * @param Exception $exception
+     * @return string
+     */
     protected function getMessage(Exception $exception)
     {
         $message = $exception->getMessage();
-        if (PHP_SAPI == 'cli') {
-            return $message;
-        }
         return $message;
     }
 
@@ -109,6 +123,10 @@ class Handle
         return $source;
     }
 
+    /**
+     * 将错误输出到response
+     * @param Exception $exception
+     */
     public function render(Exception $exception)
     {
         $data = [
@@ -131,6 +149,10 @@ class Handle
         }
     }
 
+    /**
+     * 将错误输出到终端
+     * @param Exception $exception
+     */
     public function renderForConsole(Exception $exception)
     {
         $style = new Style();

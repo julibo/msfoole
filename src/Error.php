@@ -1,6 +1,6 @@
 <?php
 // +----------------------------------------------------------------------
-// | msfoole [ 基于swoole的简易微服务框架 ]
+// | msfoole [ 基于swoole的多进程API服务框架 ]
 // +----------------------------------------------------------------------
 // | Copyright (c) 2018 http://julibo.com All rights reserved.
 // +----------------------------------------------------------------------
@@ -8,18 +8,17 @@
 // +----------------------------------------------------------------------
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
-// | 错误处理类
-// +----------------------------------------------------------------------
 
 namespace Julibo\Msfoole;
 
 use Julibo\Msfoole\Exception\ErrorException;
 use Julibo\Msfoole\Exception\ThrowableError;
 use Julibo\Msfoole\Exception\Handle;
-use Julibo\Msfoole\Facade\Log;
+use Julibo\Msfoole\Facade\Config;
 
 class Error
 {
+
     /**
      * 配置参数
      * @var array
@@ -61,13 +60,9 @@ class Error
         if (!$e instanceof \Exception) {
             $e = new ThrowableError($e);
         }
-        
         self::getExceptionHandler()->report($e);
-
-        if (PHP_SAPI == 'cli') {
+        if (Config::get('application.debug')) {
             self::getExceptionHandler()->renderForConsole($e);
-        } else {
-            self::getExceptionHandler()->render($e);
         }
     }
 
@@ -80,11 +75,8 @@ class Error
         if (!is_null($error = error_get_last()) && self::isFatal($error['type'])) {
             // 将错误信息托管至Julibo\Msfoole\Exception\ErrorException
             $exception = new ErrorException($error['type'], $error['message'], $error['file'], $error['line']);
-
             self::appException($exception);
         }
-        // 写入日志
-        // Log::save();
     }
 
     /**
@@ -127,20 +119,10 @@ class Error
      */
     public static function getExceptionHandler()
     {
-        static $handle;
-        if (!$handle) {
-            // 异常处理handle
-            $class = self::$exceptionHandler;
-            if ($class && is_string($class) && class_exists($class) && is_subclass_of($class, "\\Julibo\\Msfoole\\Exception\\Handle")) {
-                $handle = new $class;
-            } else {
-                $handle = new Handle;
-                if ($class instanceof \Closure) {
-                    $handle->setRender($class);
-                }
-            }
+        if (is_null(self::$exceptionHandler)) {
+            self::$exceptionHandler = new Handle;
         }
-        return $handle;
+        return self::$exceptionHandler;
     }
 }
 

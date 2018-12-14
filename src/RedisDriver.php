@@ -66,7 +66,7 @@ class RedisDriver
     public static function instance(array $config = []) : self
     {
         $drive = md5(json_encode($config));
-        if (!self::$instance[$drive]) {
+        if (empty(self::$instance[$drive])) {
             self::$instance[$drive] = new self($config);
         }
         return self::$instance[$drive];

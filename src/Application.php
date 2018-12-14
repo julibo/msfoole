@@ -79,6 +79,7 @@ class Application
     {
         $this->beginTime = microtime(true);
         $this->beginMem  = memory_get_usage();
+        ob_start();
     }
 
     /**
@@ -86,7 +87,7 @@ class Application
      */
     public function destruct()
     {
-        $executionTime = round(microtime(true) - $this->beginTime, 6) . 'S';
+        $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
         $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
         Log::info('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
         if ($executionTime > Config::get('log.slow_time')) {
@@ -99,22 +100,28 @@ class Application
      * 处理http请求
      * @param SwooleRequest $request
      * @param SwooleResponse $response
+     * @throws \Throwable
      */
     public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
-        ob_start();
-        try {
+         try {
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
             Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
             Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
             $this->working();
+            $content = ob_get_clean();
+            $this->httpResponse->end($content);
         } catch (\Throwable $e) {
-            echo  json_encode(['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]]);
-        }
-        $content = ob_get_clean();
-        $this->httpResponse->end($content);
+             if (Config::get('application.debug')) {
+                 $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
+             } else {
+                 $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage()];
+             }
+             $this->httpResponse->end(json_encode($content));
+             throw $e;
+         }
     }
 
     /**
@@ -127,7 +134,13 @@ class Application
         if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
         } else {
-            $result = ['code' => 0, 'msg' => '', 'data' => $data];
+            if (Config::get('application.debug')) {
+                $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
+                $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
+                $result = ['code' => 0, 'msg' => '', 'data' => $data, 'executionTime' =>$executionTime, 'consumeMem' => $consumeMem ];
+            } else {
+                $result = ['code' => 0, 'msg' => '', 'data' => $data];
+            }
             echo json_encode($result);
         }
     }
