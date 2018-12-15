@@ -74,6 +74,7 @@ class Application
         'AUTH_FAILED' => ['code' => 10000, 'msg' => '认证失败'],
         'CON_EXCEPTION' => ['code' => 10001, 'msg' => '连接异常'],
         'SIGN_EXCEPTION' => ['code' => 10002, 'msg' => '签名异常'],
+        'METHOD_NOT_EXIST' => ['code' => 10003, 'msg' => '请求方法不存在'],
     ];
 
     /**
@@ -92,7 +93,7 @@ class Application
     {
         $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
         $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
-        Log::info('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
+        Log::debug('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
         if ($executionTime > Config::get('log.slow_time')) {
             Log::slow('当前方法执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
         }
@@ -111,7 +112,7 @@ class Application
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
-            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
+            Log::debug('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
             Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
             $this->working();
             $content = ob_get_clean();
@@ -132,8 +133,10 @@ class Application
      */
     private function working()
     {
-        throw new Exception('worinmi');
         $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
+        if(!is_callable(array($controller, $this->httpRequest->action))) {
+            throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
+        }
         $data = call_user_func([$controller, $this->httpRequest->action]);
         if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
@@ -161,6 +164,9 @@ class Application
             $params = $this->request->getQuery();
             $authClass = Config::get('msfoole.websocket.login_class');
             $authAction = Config::get('msfoole.websocket.login_action');
+            if(!class_exists($authClass) || !is_callable(array($authClass, $authAction))) {
+                $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
+            }
             $authObject = new $authClass;
             $user = call_user_func_array([$authObject, $authAction], [$params]);
             if (empty($user)) {
@@ -207,7 +213,9 @@ class Application
             $req = json_decode($frame->data, true);
             $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
             $this->websocketFrame->sendToClient($frame->fd, $data);
-            throw $e;
+            if ($e->getCode() >= 100) {
+                throw $e;
+            }
         }
     }
 
@@ -253,13 +261,20 @@ class Application
      * 业务逻辑运行
      * @param array $args
      * @return mixed
+     * @throws Exception
      */
     private function runing(array $args)
     {
         $controller = Loader::factory($args['module'], Config::get('msfoole.websocket.namespace'));
-        $controller->init($args['token'], $args['user'], $args['arguments']);
-        $result = call_user_func([$controller, $args['method']]);
-        return $result;
+        if(!is_callable(array($controller, $args['method']))) {
+            throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
+        } else {
+            Log::setEnv($args['requestId'], 'websocket', "{$args['module']}/{$args['method']}", $args['user']->ip ?? '');
+            Log::debug('请求开始，请求参数为 {message}', ['message' => json_encode($args['arguments'])]);
+            $controller->init($args['token'], $args['user'], $args['arguments']);
+            $result = call_user_func([$controller, $args['method']]);
+            return $result;
+        }
     }
 
 }

@@ -71,11 +71,12 @@ class Log extends ThinkLog
      */
     public function saveData(array $data)
     {
+
         $key = $data['key'] ?? null;
         if ($key) {
             $this->key($key);
         }
-        $msg = sprintf('[ %s ] %s', $key, $data['msg']);
+        $msg = sprintf('[ %s ]  %s', $key, $data['msg']);
         $type = $data['type'] ?? 'info';
         $context = $data['context'] ?? [];
         $this->record($msg, $type, $context);

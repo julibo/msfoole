@@ -38,7 +38,7 @@ abstract class WebsocketController
      * @param $user
      * @param $params
      */
-    final public function init(string $token, array $user, array $params)
+    final public function init( $token, $user, $params)
     {
         $this->token = $token;
         $this->user = $user;
