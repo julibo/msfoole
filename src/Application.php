@@ -124,7 +124,9 @@ class Application
                  $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage()];
              }
              $this->httpResponse->end(json_encode($content));
-             throw $e;
+             if ($e->getCode() >= 100) {
+                 throw $e;
+             }
          }
     }
 
@@ -138,7 +140,7 @@ class Application
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
         }
         $data = call_user_func([$controller, $this->httpRequest->action]);
-        if (Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
+        if (!is_bool($data) && Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
         } else {
             if (Config::get('application.debug')) {

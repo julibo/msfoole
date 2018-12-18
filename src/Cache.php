@@ -13,6 +13,7 @@ namespace Julibo\Msfoole;
 
 class Cache
 {
+
     /**
      *  缓存实例
      */
