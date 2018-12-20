@@ -196,6 +196,9 @@ class AloneHttpServer extends BaseServer
                 if ($paths) {
                     $timer = $this->config['monitor']['interval'] ?? 10;
                     swoole_timer_tick($timer * 1000, function () use($paths) {
+                        if (!is_array($paths)) {
+                            $paths = array($paths);
+                        }
                         foreach ($paths as $path) {
                             $path = ROOT_PATH . $path;
                             $dir      = new \RecursiveDirectoryIterator($path);

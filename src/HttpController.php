@@ -93,6 +93,6 @@ abstract class HttpController
     protected function getUserByToken() : array
     {
         $user = Cookie::getTokenCache();
-        return $user;
+        return $user ?? [];
     }
 }
