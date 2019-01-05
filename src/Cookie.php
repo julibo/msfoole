@@ -131,14 +131,23 @@ class Cookie
      * 获取用户缓存
      * @return mixed|null
      */
-    public function getTokenCache()
+    public function getTokenCache($token = null)
     {
-        $token = $this->getToken();
+        if (!$token) {
+            $cookie = true;
+            $token = $this->getToken();
+        } else {
+            $cookie = false;
+        }
         $user = $this->cache->get($token);
         if ($user) {
             $deadline = $this->cache->getPeriod($token);
             if ($deadline < $this->config['auto_selling']) {
-                $this->setToken($user, $token);
+                if ($cookie) {
+                    $this->setToken($user, $token);
+                } else {
+                    $this->cache->set($token, $user, $this->config['expire']);
+                }
             }
             return $user;
         } else {

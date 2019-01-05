@@ -108,7 +108,7 @@ class Application
     public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
          try {
-             ob_start();
+            ob_start();
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
@@ -118,14 +118,21 @@ class Application
             $content = ob_get_clean();
             $this->httpResponse->end($content);
         } catch (\Throwable $e) {
-             if (Config::get('application.debug')) {
-                 $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
-             } else {
-                 $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage()];
-             }
-             $this->httpResponse->end(json_encode($content));
-             if ($e->getCode() >= 100) {
-                 throw $e;
+             if ($e->getCode() == 401) {
+                 $this->httpResponse->status(401);
+                 $this->httpResponse->end($e->getMessage());
+             } else if ($e->getCode() == 301 || $e->getCode() == 302) {
+                 $this->httpResponse->redirect($e->getMessage, $e->getCode);
+             }  else {
+                 if (Config::get('application.debug')) {
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
+                 } else {
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage()];
+                 }
+                 $this->httpResponse->end(json_encode($content));
+                 if ($e->getCode() > 100) {
+                     throw $e;
+                 }
              }
          }
     }
@@ -135,12 +142,13 @@ class Application
      */
     private function working()
     {
-        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest);
+        $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest, $this->cache);
         if(!is_callable(array($controller, $this->httpRequest->action))) {
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
         }
         $data = call_user_func([$controller, $this->httpRequest->action]);
-        if (!is_bool($data) && Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
+        if ($data === null && ob_get_contents() != '') {
+        } else if (is_string($data) && Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
         } else {
             if (Config::get('application.debug')) {
@@ -215,7 +223,7 @@ class Application
             $req = json_decode($frame->data, true);
             $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
             $this->websocketFrame->sendToClient($frame->fd, $data);
-            if ($e->getCode() >= 100) {
+            if ($e->getCode() > 100) {
                 throw $e;
             }
         }

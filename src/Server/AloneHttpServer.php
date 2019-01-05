@@ -296,9 +296,20 @@ class AloneHttpServer extends BaseServer
             $response->status(404);
             $response->end();
         } else {
-            $this->app->initialize();
-            $this->app->swooleHttp($request, $response);
-            $this->app->destruct();
+            if ($request->header['origin'] == Config::get('application.access.origin') || in_array($request->header['origin'], Config::get('application.access.origin'))) {
+                $response->header('Access-Control-Allow-Origin', $request->header['origin']);
+                $response->header('Access-Control-Allow-Credentials', 'true');
+                $response->header('Access-Control-Max-Age', 3600);
+                $response->header('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With, token, timestamp, level, signstr');
+            }
+            if ($request->server['request_method'] == 'OPTIONS') {
+                $response->status(http_response_code());
+                $response->end();
+            } else {
+                $this->app->initialize();
+                $this->app->swooleHttp($request, $response);
+                $this->app->destruct();
+            }
         }
     }
 

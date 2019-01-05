@@ -22,15 +22,19 @@ abstract class HttpController
 
     protected $params;
 
+    protected $cache;
+
     /**
      * 依赖注入HttpRequest
      * HttpController constructor.
-     * @param HttpRequest $request
+     * @param $request
+     * @param $cache
      * @throws \Exception
      */
-    public function __construct($request)
+    public function __construct($request, $cache)
     {
         $this->request = $request;
+        $this->cache = $cache;
         $this->paramChecking();
         $this->authentication();
         $this->init();
@@ -92,7 +96,8 @@ abstract class HttpController
      */
     protected function getUserByToken() : array
     {
-        $user = Cookie::getTokenCache();
+        $token =  $this->request->getHeader('token') ?? null;
+        $user = Cookie::getTokenCache($token);
         return $user ?? [];
     }
 }
