@@ -23,7 +23,7 @@ class Ini
     public function parse()
     {
         if (is_file($this->config)) {
-            return parse_ini_file($this->config);
+            return parse_ini_file($this->config, false, INI_SCANNER_TYPED);
         } else {
             return parse_ini_string($this->config);
         }

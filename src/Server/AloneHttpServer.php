@@ -229,7 +229,8 @@ class AloneHttpServer extends BaseServer
 
     public function onShutdown(\Swoole\Server $server)
     {
-        echo "主进程结束";
+        // echo "主进程结束";
+        Helper::sendDingRobotTxt("主进程结束");
     }
 
     public function onManagerStart(\Swoole\Server $server)
@@ -239,7 +240,8 @@ class AloneHttpServer extends BaseServer
 
     public function onManagerStop(\Swoole\Server $server)
     {
-        echo "管理进程停止";
+        // echo "管理进程停止";
+        Helper::sendDingRobotTxt("管理进程停止");
     }
 
     public function onWorkerStart(\Swoole\Server $server, int $worker_id)
@@ -256,22 +258,25 @@ class AloneHttpServer extends BaseServer
         if ($this->table) {
             $this->app->table = $this->table;
         }
-
     }
 
     public function onWorkerStop(\Swoole\Server $server, int $worker_id)
     {
-        echo "worker进程终止";
+        // echo "worker进程终止";
+        Helper::sendDingRobotTxt("worker进程终止");
     }
 
     public function onWorkerExit(\Swoole\Server $server, int $worker_id)
     {
-        echo "worker进程退出";
+        // echo "worker进程退出";
+        Helper::sendDingRobotTxt("worker进程退出");
     }
 
     public function onWorkerError(\Swoole\Server $serv, int $worker_id, int $worker_pid, int $exit_code, int $signal)
     {
-        echo sprintf("worker进程异常:[%d] %d 退出的状态码为%d, 退出的信号为%d", $worker_pid, $worker_id, $exit_code, $signal);
+        $error = sprintf("worker进程异常:[%d] %d 退出的状态码为%d, 退出的信号为%d", $worker_pid, $worker_id, $exit_code, $signal);
+        // echo $error;
+        Helper::sendDingRobotTxt($error);
     }
 
     public function onClose(\Swoole\Server $server, int $fd, int $reactorId)
@@ -300,7 +305,7 @@ class AloneHttpServer extends BaseServer
                 $response->header('Access-Control-Allow-Origin', $request->header['origin']);
                 $response->header('Access-Control-Allow-Credentials', 'true');
                 $response->header('Access-Control-Max-Age', 3600);
-                $response->header('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With, token, timestamp, level, signstr');
+                $response->header('Access-Control-Allow-Headers', 'Content-Type, token, timestamp, level, signstr, identification_code');
             }
             if ($request->server['request_method'] == 'OPTIONS') {
                 $response->status(http_response_code());

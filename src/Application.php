@@ -31,24 +31,6 @@ class Application
     private $websocketFrame;
 
     /**
-     * swoole服务
-     * @var
-     */
-    public $swoole;
-
-    /**
-     * websocket内存表
-     * @var
-     */
-    public $table;
-
-    /**
-     *  全局缓存
-     * @var
-     */
-    public $cache;
-
-    /**
      * websocket request
      * @var
      */
@@ -67,14 +49,32 @@ class Application
     private $httpResponse;
 
     /**
+     * swoole服务
+     * @var
+     */
+    public $swoole;
+
+    /**
+     * websocket内存表
+     * @var
+     */
+    public $table;
+
+    /**
+     *  全局缓存
+     * @var
+     */
+    public $cache;
+
+    /**
      * 异常信息
      * @var array
      */
     public static $error = [
-        'AUTH_FAILED' => ['code' => 10000, 'msg' => '认证失败'],
-        'CON_EXCEPTION' => ['code' => 10001, 'msg' => '连接异常'],
-        'SIGN_EXCEPTION' => ['code' => 10002, 'msg' => '签名异常'],
-        'METHOD_NOT_EXIST' => ['code' => 10003, 'msg' => '请求方法不存在'],
+        'AUTH_FAILED' => ['code' => 210, 'msg' => '认证失败'],
+        'CON_EXCEPTION' => ['code' => 211, 'msg' => '连接异常'],
+        'SIGN_EXCEPTION' => ['code' => 212, 'msg' => '签名异常'],
+        'METHOD_NOT_EXIST' => ['code' => 213, 'msg' => '请求方法不存在'],
     ];
 
     /**
@@ -93,7 +93,7 @@ class Application
     {
         $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
         $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
-        Log::debug('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
+        Log::info('请求结束，执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
         if ($executionTime > Config::get('log.slow_time')) {
             Log::slow('当前方法执行时间{executionTime}，消耗内存{consumeMem}', ['executionTime' => $executionTime, 'consumeMem' => $consumeMem]);
         }
@@ -112,9 +112,9 @@ class Application
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
-            Log::debug('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
+            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
             Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
-            $this->working();
+            $this->working($this->httpRequest->identification);
             $content = ob_get_clean();
             $this->httpResponse->end($content);
         } catch (\Throwable $e) {
@@ -125,12 +125,12 @@ class Application
                  $this->httpResponse->redirect($e->getMessage, $e->getCode);
              }  else {
                  if (Config::get('application.debug')) {
-                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $this->httpRequest->identification, 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
                  } else {
-                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage()];
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $this->httpRequest->identification];
                  }
                  $this->httpResponse->end(json_encode($content));
-                 if ($e->getCode() > 100) {
+                 if ($e->getCode() >= 500) {
                      throw $e;
                  }
              }
@@ -139,8 +139,10 @@ class Application
 
     /**
      * 运行请求
+     * @param null $identification
+     * @throws Exception
      */
-    private function working()
+    private function working($identification =  null)
     {
         $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest, $this->cache);
         if(!is_callable(array($controller, $this->httpRequest->action))) {
@@ -154,9 +156,9 @@ class Application
             if (Config::get('application.debug')) {
                 $executionTime = round(microtime(true) - $this->beginTime, 6) . 's';
                 $consumeMem = round((memory_get_usage() - $this->beginMem) / 1024, 2) . 'K';
-                $result = ['code' => 0, 'msg' => '', 'data' => $data, 'executionTime' =>$executionTime, 'consumeMem' => $consumeMem ];
+                $result = ['code' => 0, 'msg' => '', 'data' => $data, 'identification' => $identification, 'executionTime' =>$executionTime, 'consumeMem' => $consumeMem ];
             } else {
-                $result = ['code' => 0, 'msg' => '', 'data' => $data];
+                $result = ['code' => 0, 'msg' => '', 'data' => $data, 'identification' => $identification];
             }
             echo json_encode($result);
         }
@@ -177,8 +179,7 @@ class Application
             if(!class_exists($authClass) || !is_callable(array($authClass, $authAction))) {
                 $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
             }
-            $authObject = new $authClass;
-            $user = call_user_func_array([$authObject, $authAction], [$params]);
+            $user = call_user_func_array([new $authClass, $authAction], [$params]);
             if (empty($user)) {
                 $server->disconnect($request->fd, self::$error['AUTH_FAILED']['code'], self::$error['AUTH_FAILED']['msg']);
             } else {
@@ -203,7 +204,7 @@ class Application
     public function swooleWebSocket(Websocket $server, Webframe $frame)
     {
         try {
-            $this->websocketFrame = new WebSocketFrame($server, $frame);
+            $this->websocketFrame = WebSocketFrame::getInstance($server, $frame);
             // 解析并验证请求
             $checkResult = $this->explainMessage($this->websocketFrame->getData());
             if ($checkResult === false) {
@@ -219,11 +220,16 @@ class Application
                 }
                 $this->websocketFrame->sendToClient($frame->fd, $data);
             }
+            WebSocketFrame::destroy();
         } catch (\Throwable $e) {
             $req = json_decode($frame->data, true);
-            $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
+            if (Config::get('application.debug')) {
+                $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId'], 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
+            } else {
+                $data = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'data'=>[], 'requestId'=>$req['requestId']];
+            }
             $this->websocketFrame->sendToClient($frame->fd, $data);
-            if ($e->getCode() > 100) {
+            if ($e->getCode() >= 500) {
                 throw $e;
             }
         }
@@ -280,7 +286,7 @@ class Application
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
         } else {
             Log::setEnv($args['requestId'], 'websocket', "{$args['module']}/{$args['method']}", $args['user']->ip ?? '');
-            Log::debug('请求开始，请求参数为 {message}', ['message' => json_encode($args['arguments'])]);
+            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($args)]);
             $controller->init($args['token'], $args['user'], $args['arguments']);
             $result = call_user_func([$controller, $args['method']]);
             return $result;

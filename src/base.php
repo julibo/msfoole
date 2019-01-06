@@ -9,7 +9,6 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-define('SMFOOLE_VERSION', '0.0.1');
 defined('DS') or define('DS', DIRECTORY_SEPARATOR);
 defined('ROOT_PATH') or define('ROOT_PATH', realpath(dirname($_SERVER['SCRIPT_FILENAME'])) . DS);
 defined('APP_PATH') or define('APP_PATH', ROOT_PATH . 'app' . DS);
@@ -28,12 +27,12 @@ define('IS_CLI', PHP_SAPI == 'cli' ? true : false);
 define('IS_DARWIN', strpos(PHP_OS, 'Darwin') !== false);
 
 if (!IS_CLI) {
-    exit('仅限命令行模式下运行');
+    exit('仅限命令行模式下运行' . PHP_EOL);
 }
 
 require ROOT_PATH . 'vendor/autoload.php';
 
-// todo 注册错误和异常处理机制
+// 注册错误和异常处理机制
 \Julibo\Msfoole\Error::register();
 
 // 加载项目默认配置
@@ -41,3 +40,4 @@ require ROOT_PATH . 'vendor/autoload.php';
 
 // 配置文件解析
 \Julibo\Msfoole\Facade\Config::loadConfig(CONF_PATH, CONF_EXT);
+

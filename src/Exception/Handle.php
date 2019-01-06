@@ -24,9 +24,7 @@ class Handle
      * 忽略的异常
      * @var array
      */
-    protected $ignoreReport = [
-        // '\\Julibo\\Msfoole\\Exception\\HttpException',
-    ];
+    protected $ignoreReport = [];
 
     /**
      * 判断忽略异常
@@ -37,7 +35,7 @@ class Handle
     {
         foreach ($this->ignoreReport as $class) {
             if ($exception instanceof $class) {
-                return false;
+                return true;
             }
         }
         return false;

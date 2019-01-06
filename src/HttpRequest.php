@@ -113,7 +113,7 @@ class HttpRequest
      * 请求参数
      * @var
      */
-    public $params;
+    public $params = [];
 
     public function __construct(SwooleRequest $request, array $options = [])
     {
@@ -158,7 +158,7 @@ class HttpRequest
         $this->header = $header;
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
-        $this->identification = $this->header['identification_code'] ?? null;
+        $this->identification = $this->header['identification_code'] ?? Helper::guid();
         return $this;
     }
 
@@ -270,7 +270,7 @@ class HttpRequest
     /**
      * Http请求的GET参数，相当于PHP中的$_GET，格式为数组。
      * @param string $name
-     * @return |null
+     * @return null
      */
     public function getParams($name = "")
     {

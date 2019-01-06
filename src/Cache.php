@@ -82,11 +82,6 @@ class Cache
         return $this->config;
     }
 
-    public function setConfig(array $config)
-    {
-        $this->config = array_merge($this->config, $config);
-    }
-
     public function __call($method, $args)
     {
         return call_user_func_array([$this->handle, $method], $args);

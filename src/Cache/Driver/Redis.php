@@ -40,11 +40,11 @@ class Redis extends Driver
 
     public function get($name, $default = null)
     {
-        $key = $this->getCacheKey($name);
-        $value = $this->handler->get($key);
-        if (!$value) {
+        if (!$this->has($name)) {
             $value = $default;
         } else {
+            $key = $this->getCacheKey($name);
+            $value = $this->handler->get($key);
             $arrValue = Helper::isJson($value, true);
             if ($this->options['serialize'] && $arrValue) {
                 $value = $arrValue;

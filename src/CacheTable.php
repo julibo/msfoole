@@ -52,18 +52,18 @@ class CacheTable
         return $this->table->decr($key, $column, $decrby);
     }
 
-    public function get($key, $field = null)
+    public function get($key)
     {
-        $data = $this->table->get($key, $field);
-        if (false == $data) {
-            return $data;
+        $data = $this->table->get($key);
+        if (false === $data) {
+            return null;
         }
         if (0 == $data['time']) {
             return $data['data'];
         }
         if (0 <= $data['time'] && $data['time'] < time()) {
             $this->del($key);
-            return false;
+            return null;
         }
         return $data['data'];
     }

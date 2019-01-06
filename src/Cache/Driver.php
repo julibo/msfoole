@@ -40,10 +40,10 @@ abstract class Driver
     /**
      * 读取缓存
      * @param $name 缓存变量名
-     * @param bool $default 默认值
+     * @param null $default 默认值
      * @return mixed
      */
-    abstract public function get($name, $default = false);
+    abstract public function get($name, $default = null);
 
     /**
      * 写入缓存
@@ -107,12 +107,12 @@ abstract class Driver
      */
     public function pull($name)
     {
-        $result = $this->get($name, false);
-        if ($result) {
+        $result = $this->get($name, null);
+        if (!is_null($result)) {
             $this->del($name);
             return $result;
         } else {
-            return;
+            return null;
         }
     }
 

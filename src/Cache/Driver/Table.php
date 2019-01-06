@@ -18,7 +18,7 @@ use Julibo\Msfoole\Helper;
 class Table extends Driver
 {
     protected $options = [
-        'expire' => 0,
+        'expire' => 3600,
         'prefix' => '',
         'serialize' => true
     ];
@@ -35,15 +35,19 @@ class Table extends Driver
         return $this->handler->exist($key);
     }
 
-    public function get($name, $default = false)
+    public function get($name, $default = null)
     {
-        $key = $this->getCacheKey($name);
-        $value = $this->handler->get($key, $default);
-        $arrValue = Helper::isJson($value, true);
-        if ($this->options['serialize'] && $arrValue) {
-            $value = $arrValue;
+        if ($this->has($name)) {
+            $key = $this->getCacheKey($name);
+            $value = $this->handler->get($key);
+            $arrValue = Helper::isJson($value, true);
+            if ($this->options['serialize'] && $arrValue) {
+                $value = $arrValue;
+            }
+            return $value;
+        } else {
+            return $default;
         }
-        return $value;
     }
 
     public function getPeriod($name)
@@ -62,7 +66,11 @@ class Table extends Driver
         if ($expire) {
             $result = $this->handler->setex($key, $expire, $value);
         } else {
-            $result = $this->handler->set($key, $value);
+            if (is_null($expire)) {
+                $result = $this->handler->setex($key, $this->options['expire'], $value);
+            } else {
+                $result = $this->handler->set($key, $value);
+            }
         }
         return $result;
     }
@@ -74,19 +82,17 @@ class Table extends Driver
         } else {
             $value  = $step;
         }
-        return $this->set($name, $value) ? $value : false;
+        return $this->set($name, $value, 0) ? $value : false;
     }
 
     public function dec($name, $step = 1)
     {
         if ($this->has($name)) {
             $value  = $this->get($name) - $step;
-            $expire = 0;
         } else {
             $value  = -$step;
-            $expire = 0;
         }
-        return $this->set($name, $value, $expire) ? $value : false;
+        return $this->set($name, $value, 0) ? $value : false;
     }
 
     public function del($name)
@@ -98,6 +104,7 @@ class Table extends Driver
     public function clear()
     {
         $this->handler->clear();
+        return true;
     }
 
     public function getTable()

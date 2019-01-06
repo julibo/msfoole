@@ -100,18 +100,6 @@ class Error
     }
 
     /**
-     * 设置异常处理类
-     *
-     * @access public
-     * @param  mixed $handle
-     * @return void
-     */
-    public static function setExceptionHandler($handle)
-    {
-        self::$exceptionHandler = $handle;
-    }
-
-    /**
      * Get an instance of the exception handler.
      *
      * @access public
@@ -125,4 +113,3 @@ class Error
         return self::$exceptionHandler;
     }
 }
-

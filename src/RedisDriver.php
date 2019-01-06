@@ -12,7 +12,6 @@
 namespace Julibo\Msfoole;
 
 use Redis;
-use Julibo\Msfoole\Facade\Config;
 
 class RedisDriver
 {
@@ -65,7 +64,7 @@ class RedisDriver
      */
     public static function instance(array $config = []) : self
     {
-        $drive = md5(json_encode($config));
+        $drive = md5(serialize($config));
         if (empty(self::$instance[$drive])) {
             self::$instance[$drive] = new self($config);
         }
@@ -139,7 +138,6 @@ class RedisDriver
      */
     public function clear()
     {
-        $lists = [];
         $iterator = null;
         $pattern = $this->config['prefix'] .  '*';
         do {

@@ -34,7 +34,7 @@ class WebSocketFrame implements \ArrayAccess
         $this->fd = $this->frame->fd;
     }
 
-    public static function getInstance($server = null, $frame = null)
+    public static function getInstance(Websocket $server, Webframe $frame)
     {
         if (empty(self::$instance)) {
             self::$instance = new static($server, $frame);

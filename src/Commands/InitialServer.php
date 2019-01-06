@@ -39,7 +39,6 @@ class InitialServer extends Command implements Console
     public function configure()
     {
         $this->setName('msfoole')
-            // ->setProcessTitle('msfoole:master') // 存在兼容问题
             ->setDescription('msfoole命令行工具')
             ->setHelp('msfoole是基于swoole的多进程API服务框架')
             ->addArgument('action', InputArgument::REQUIRED, '执行操作：可选择值为start、stop、reload、restart')
@@ -59,8 +58,7 @@ class InitialServer extends Command implements Console
         $this->input = $input;
         $this->output = $output;
         $this->init();
-        $action = $this->action;
-        $this->$action();
+        call_user_func([$this, $this->action]);
     }
 
     /**
@@ -95,7 +93,7 @@ class InitialServer extends Command implements Console
      * 根据环境加载对应的环境配置文件
      * @param $env
      */
-    private function setEnvConfig($env)
+    private function setEnvConfig(string $env)
     {
         $file = CONF_PATH . 'php-' . strtolower($env) . ENV_EXT;
         if (file_exists($file)) {
@@ -231,6 +229,7 @@ class InitialServer extends Command implements Console
         if ($this->isRunning($pid)) {
             $this->stop();
         }
+        sleep(3);
         $this->start();
     }
 
