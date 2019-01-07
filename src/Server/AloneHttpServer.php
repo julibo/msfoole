@@ -301,7 +301,7 @@ class AloneHttpServer extends BaseServer
             $response->status(404);
             $response->end();
         } else {
-            if ($request->header['origin'] == Config::get('application.access.origin') || in_array($request->header['origin'], Config::get('application.access.origin'))) {
+            if (isset($request->header['origin']) && ($request->header['origin'] == Config::get('application.access.origin') || in_array($request->header['origin'], Config::get('application.access.origin')))) {
                 $response->header('Access-Control-Allow-Origin', $request->header['origin']);
                 $response->header('Access-Control-Allow-Credentials', 'true');
                 $response->header('Access-Control-Max-Age', 3600);

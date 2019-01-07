@@ -220,7 +220,6 @@ class Application
                 }
                 $this->websocketFrame->sendToClient($frame->fd, $data);
             }
-            WebSocketFrame::destroy();
         } catch (\Throwable $e) {
             $req = json_decode($frame->data, true);
             if (Config::get('application.debug')) {
