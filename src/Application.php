@@ -286,7 +286,7 @@ class Application
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
         } else {
             Log::setEnv($args['requestId'], 'websocket', "{$args['module']}/{$args['method']}", $args['user']->ip ?? '');
-            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($args)]);
+            Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($args['arguments'])]);
             $controller->init($args['token'], $args['user'], $args['arguments']);
             $result = call_user_func([$controller, $args['method']]);
             return $result;

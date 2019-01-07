@@ -11,7 +11,6 @@
 
 namespace Julibo\Msfoole;
 
-
 abstract class WebsocketController
 {
     /**
@@ -38,7 +37,7 @@ abstract class WebsocketController
      * @param $user
      * @param $params
      */
-    final public function init( $token, $user, $params)
+    final public function init(string $token, object $user, array $params)
     {
         $this->token = $token;
         $this->user = $user;

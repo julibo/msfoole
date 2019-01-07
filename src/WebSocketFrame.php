@@ -77,7 +77,7 @@ class WebSocketFrame implements \ArrayAccess
         return $this->server->exist($fd);
     }
 
-    public function disconnect($fd, $code = 10000, $reason = "")
+    public function disconnect($fd, $code = 1000, $reason = "")
     {
         $this->server->disconnect($fd, $code, $reason);
     }
