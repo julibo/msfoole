@@ -71,10 +71,12 @@ class Application
      * @var array
      */
     public static $error = [
-        'AUTH_FAILED' => ['code' => 210, 'msg' => '认证失败'],
-        'CON_EXCEPTION' => ['code' => 211, 'msg' => '连接异常'],
-        'SIGN_EXCEPTION' => ['code' => 212, 'msg' => '签名异常'],
-        'METHOD_NOT_EXIST' => ['code' => 213, 'msg' => '请求方法不存在'],
+        'AUTH_FAILED' => ['code' => 20, 'msg' => '认证失败'],
+        'CON_EXCEPTION' => ['code' => 21, 'msg' => '连接异常'],
+        'REQUEST_EXCEPTION' => ['code' => 22, 'msg' => '非法请求'],
+        'SIGN_EXCEPTION' => ['code' => 23, 'msg' => '签名异常'],
+        'AUTH_EXCEPTION' => ['code' => 24, 'msg' => '用户认证失败'],
+        'METHOD_NOT_EXIST' => ['code' => 29, 'msg' => '请求方法不存在'],
     ];
 
     /**
@@ -107,13 +109,13 @@ class Application
      */
     public function swooleHttp(SwooleRequest $request, SwooleResponse $response)
     {
-         try {
+        try {
             ob_start();
             $this->httpRequest = new HttpRequest($request);
             $this->httpResponse = new Response($response);
+            Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
             Log::setEnv($this->httpRequest->identification, $this->httpRequest->request_method, $this->httpRequest->request_uri, $this->httpRequest->remote_addr);
             Log::info('请求开始，请求参数为 {message}', ['message' => json_encode($this->httpRequest->params)]);
-            Cookie::init($this->httpRequest, $this->httpResponse, $this->cache);
             $this->working($this->httpRequest->identification);
             $content = ob_get_clean();
             $this->httpResponse->end($content);
@@ -124,10 +126,11 @@ class Application
              } else if ($e->getCode() == 301 || $e->getCode() == 302) {
                  $this->httpResponse->redirect($e->getMessage, $e->getCode);
              }  else {
+                 $identification = $this->httpRequest->identification ?? '';
                  if (Config::get('application.debug')) {
-                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $this->httpRequest->identification, 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $identification, 'extra'=>['file'=>$e->getFile(), 'line'=>$e->getLine()]];
                  } else {
-                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $this->httpRequest->identification];
+                     $content = ['code'=>$e->getCode(), 'msg'=>$e->getMessage(), 'identification' => $identification];
                  }
                  $this->httpResponse->end(json_encode($content));
                  if ($e->getCode() >= 500) {
@@ -144,13 +147,29 @@ class Application
      */
     private function working($identification =  null)
     {
+        $header = $this->httpRequest->header;
+        if (empty($header) || !isset($header['level']) || empty($header['timestamp']) || empty($header['token']) ||
+        empty($header['signstr']) || !in_array($header['level'], [0, 1, 2]) || $header['timestamp'] > strtotime('10 minutes') * 1000 ||
+            $header['timestamp'] < strtotime('-10 minutes') * 1000) {
+            throw new Exception(self::$error['REQUEST_EXCEPTION']['msg'], self::$error['REQUEST_EXCEPTION']['code']);
+        }
+        $signsrc = $header['timestamp'].$header['token'];
+        if (!empty($this->httpRequest->params)) {
+            ksort($this->httpRequest->params);
+            array_walk($this->httpRequest->params,function($value,$key) use (&$signsrc) {
+                $signsrc .= $key.$value;
+            });
+        }
+        if (md5($signsrc) != $header['signstr']) {
+            throw new Exception(self::$error['SIGN_EXCEPTION']['msg'], self::$error['SIGN_EXCEPTION']['code']);
+        }
         $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest, $this->cache);
         if(!is_callable(array($controller, $this->httpRequest->action))) {
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
         }
         $data = call_user_func([$controller, $this->httpRequest->action]);
         if ($data === null && ob_get_contents() != '') {
-        } else if (is_string($data) && Config::get('application.allow.output') && in_array($data, Config::get('application.allow.output'))) {
+        } else if (is_string($data) && is_array(Config::get('application.allow.output')) && in_array($data, Config::get('application.allow.output'))) {
             echo $data;
         } else {
             if (Config::get('application.debug')) {

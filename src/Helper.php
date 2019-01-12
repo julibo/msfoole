@@ -105,4 +105,26 @@ class Helper
         }
     }
 
+    /**
+     * 解析host根域
+     * @param $host
+     * @return array
+     */
+    public static function getRootRegion($host)
+    {
+        $host = explode(':', $host);
+        array_pop($host);
+        if (filter_var($host[0], FILTER_VALIDATE_IP)) {
+            $baseHost = $host[0];
+        } else {
+            $origin = explode('.', $host[0]);
+            if (count($origin) > 2) {
+                $baseHost = array_slice($origin, -2);
+            } else {
+                $baseHost = $origin;
+            }
+        }
+        return $baseHost;
+    }
+
 }

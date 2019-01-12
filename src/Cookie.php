@@ -34,6 +34,11 @@ class Cookie
     private $cache;
 
     /**
+     * @var
+     */
+    private $domain;
+
+    /**
      * 默认配置
      * @var
      */
@@ -65,6 +70,7 @@ class Cookie
     public function init(HttpRequest $request, Response $response, Cache $cache)
     {
         $this->cookies = $request->getCookie();
+        $this->domain = $request->baseHost ?? '';
         $this->response = $response;
         $this->cache = $cache;
         $this->config = array_merge($this->config, Config::get('cookie'));
@@ -85,8 +91,8 @@ class Cookie
             $expire = time()+$expire;
         }
         $expire = strtotime('+8 hours', $expire);
-        $path = $this->config['path'];
-        $domain = $this->config['domain'];
+        $path = $this->config['path'] ?: '/';
+        $domain = $this->config['domain'] ?: $this->domain;
         $secure = $this->config['secure'] ? true : false;
         $httponly = $this->config['httponly'] ? true : false;
         $this->response->cookie($key, $value, $expire, $path, $domain, $secure, $httponly);
@@ -129,7 +135,8 @@ class Cookie
 
     /**
      * 获取用户缓存
-     * @return mixed|null
+     * @param null $token
+     * @return array|null
      */
     public function getTokenCache($token = null)
     {

@@ -66,6 +66,8 @@ class HttpRequest
 
     private $host;
 
+    private $baseHost;
+
     private $origin;
 
     private $request_method;
@@ -158,6 +160,7 @@ class HttpRequest
         $this->header = $header;
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
+        $this->baseHost = Helper::getRootRegion($this->host);
         $this->identification = $this->header['identification_code'] ?? Helper::guid();
         return $this;
     }

@@ -68,7 +68,7 @@ abstract class HttpController
             if ($user) {
                 $this->user = $user;
             } else {
-                throw new \Exception("用户认证未通过", 100);
+                throw new Exception(Application::$error['AUTH_EXCEPTION']['msg'], Application::$error['AUTH_EXCEPTION']['code']);
             }
         }
     }

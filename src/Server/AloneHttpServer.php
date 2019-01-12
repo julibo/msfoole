@@ -301,11 +301,20 @@ class AloneHttpServer extends BaseServer
             $response->status(404);
             $response->end();
         } else {
-            if (isset($request->header['origin']) && ($request->header['origin'] == Config::get('application.access.origin') || in_array($request->header['origin'], Config::get('application.access.origin')))) {
-                $response->header('Access-Control-Allow-Origin', $request->header['origin']);
-                $response->header('Access-Control-Allow-Credentials', 'true');
-                $response->header('Access-Control-Max-Age', 3600);
-                $response->header('Access-Control-Allow-Headers', 'Content-Type, token, timestamp, level, signstr, identification_code');
+            if (isset($request->header['origin'])) {
+                $origin = true;
+                if (is_array(Config::get('application.access.origin'))) {
+                    in_array($request->header['origin'], Config::get('application.access.origin')) ? : $origin = false;
+                } else {
+                    $request->header['origin'] == Config::get('application.access.origin') ? : $origin = false;
+                }
+                if ($origin) {
+                    $response->header('Access-Control-Allow-Origin', $request->header['origin']);
+                    $response->header('Access-Control-Allow-Credentials', 'true');
+                    $response->header('Access-Control-Max-Age', '3600');
+                    $response->header('Access-Control-Allow-Headers', 'Content-Type, Cookie, token, timestamp, level, signstr, identification_code');
+                    $response->header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+                }
             }
             if ($request->server['request_method'] == 'OPTIONS') {
                 $response->status(http_response_code());
@@ -317,7 +326,6 @@ class AloneHttpServer extends BaseServer
             }
         }
     }
-
 
     /**
      * 连接开启回调
