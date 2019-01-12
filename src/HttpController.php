@@ -64,6 +64,22 @@ abstract class HttpController
             }
         }
         if ($execute) {
+            $header = $this->request->header;
+            if (empty($header) || !isset($header['level']) || empty($header['timestamp']) || empty($header['token']) ||
+                empty($header['signstr']) || !in_array($header['level'], [0, 1, 2]) || $header['timestamp'] > strtotime('10 minutes') * 1000 ||
+                $header['timestamp'] < strtotime('-10 minutes') * 1000) {
+                throw new Exception(Application::$error['REQUEST_EXCEPTION']['msg'], Application::$error['REQUEST_EXCEPTION']['code']);
+            }
+            $signsrc = $header['timestamp'].$header['token'];
+            if (!empty($this->params)) {
+                ksort($this->params);
+                array_walk($this->params, function($value,$key) use (&$signsrc) {
+                    $signsrc .= $key.$value;
+                });
+            }
+            if (md5($signsrc) != $header['signstr']) {
+                throw new Exception(Application::$error['SIGN_EXCEPTION']['msg'], Application::$error['SIGN_EXCEPTION']['code']);
+            }
             $user = $this->getUserByToken();
             if ($user) {
                 $this->user = $user;

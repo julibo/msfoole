@@ -147,22 +147,6 @@ class Application
      */
     private function working($identification =  null)
     {
-        $header = $this->httpRequest->header;
-        if (empty($header) || !isset($header['level']) || empty($header['timestamp']) || empty($header['token']) ||
-        empty($header['signstr']) || !in_array($header['level'], [0, 1, 2]) || $header['timestamp'] > strtotime('10 minutes') * 1000 ||
-            $header['timestamp'] < strtotime('-10 minutes') * 1000) {
-            throw new Exception(self::$error['REQUEST_EXCEPTION']['msg'], self::$error['REQUEST_EXCEPTION']['code']);
-        }
-        $signsrc = $header['timestamp'].$header['token'];
-        if (!empty($this->httpRequest->params)) {
-            ksort($this->httpRequest->params);
-            array_walk($this->httpRequest->params,function($value,$key) use (&$signsrc) {
-                $signsrc .= $key.$value;
-            });
-        }
-        if (md5($signsrc) != $header['signstr']) {
-            throw new Exception(self::$error['SIGN_EXCEPTION']['msg'], self::$error['SIGN_EXCEPTION']['code']);
-        }
         $controller = Loader::factory($this->httpRequest->controller, $this->httpRequest->namespace, $this->httpRequest, $this->cache);
         if(!is_callable(array($controller, $this->httpRequest->action))) {
             throw new Exception(self::$error['METHOD_NOT_EXIST']['msg'], self::$error['METHOD_NOT_EXIST']['code']);
