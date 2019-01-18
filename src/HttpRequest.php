@@ -191,6 +191,7 @@ class HttpRequest
     private function withGet($get)
     {
         $this->get = $get;
+        $_GET = $this->get;
         return $this;
     }
 
@@ -202,6 +203,7 @@ class HttpRequest
     private function withPost($post)
     {
         $this->post = $post;
+        $_POST = $this->post;
         return $this;
     }
 
