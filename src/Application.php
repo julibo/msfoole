@@ -124,7 +124,7 @@ class Application
                  $this->httpResponse->status(401);
                  $this->httpResponse->end($e->getMessage());
              } else if ($e->getCode() == 301 || $e->getCode() == 302) {
-                 $this->httpResponse->redirect($e->getMessage, $e->getCode);
+                 $this->httpResponse->redirect($e->getMessage(), $e->getCode());
              }  else {
                  $identification = $this->httpRequest->identification ?? '';
                  if (Config::get('application.debug')) {

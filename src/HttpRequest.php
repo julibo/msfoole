@@ -161,6 +161,7 @@ class HttpRequest
         $this->host = $this->header['host'] ?? null;
         $this->origin = $this->header['origin'] ?? null;
         $this->baseHost = Helper::getRootRegion($this->host);
+        $this->remote_addr = $this->header['x-real-ip'] ?? null;
         $this->identification = $this->header['identification_code'] ?? Helper::guid();
         return $this;
     }
@@ -179,7 +180,9 @@ class HttpRequest
         $this->path_info = $this->server['path_info'] ?? null;
         $this->query_string = $this->server['query_string'] ?? null;
         $this->server_port = $this->server['server_port'] ?? null;
-        $this->remote_addr = $this->server['remote_addr'] ?? null;
+        if (is_null($this->remote_addr)) {
+            $this->remote_addr = $this->server['remote_addr'] ?? null;
+        }
         return $this;
     }
 
