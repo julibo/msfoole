@@ -34,11 +34,6 @@ class Cookie
     private $cache;
 
     /**
-     * @var
-     */
-    private $domain;
-
-    /**
      * 默认配置
      * @var
      */
@@ -70,7 +65,6 @@ class Cookie
     public function init(HttpRequest $request, Response $response, Cache $cache)
     {
         $this->cookies = $request->getCookie();
-        $this->domain = $request->baseHost ?? '';
         $this->response = $response;
         $this->cache = $cache;
         $this->config = array_merge($this->config, Config::get('cookie'));
@@ -92,7 +86,7 @@ class Cookie
         }
         $expire = strtotime('+8 hours', $expire);
         $path = $this->config['path'] ?: '/';
-        $domain = $this->config['domain'] ?: $this->domain;
+        $domain = $this->config['domain'] ?: '';
         $secure = $this->config['secure'] ? true : false;
         $httponly = $this->config['httponly'] ? true : false;
         $this->response->cookie($key, $value, $expire, $path, $domain, $secure, $httponly);
