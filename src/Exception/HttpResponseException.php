@@ -9,29 +9,22 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole\Exception;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+class HttpResponseException extends \RuntimeException
 {
     /**
-     * 初始化工程
+     * @var Response
      */
-    public function init();
+    protected $response;
 
-    /**
-     * 进程配置
-     */
-    public function configure();
+    public function __construct($response)
+    {
+        $this->response = $response;
+    }
 
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
+    public function getResponse()
+    {
+        return $this->response;
+    }
 }

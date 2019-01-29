@@ -9,29 +9,25 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole\Exception;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+class ClassNotFoundException extends \RuntimeException
 {
-    /**
-     * 初始化工程
-     */
-    public function init();
+    protected $class;
+
+    public function __construct($message, $class = '')
+    {
+        $this->message = $message;
+        $this->class   = $class;
+    }
 
     /**
-     * 进程配置
+     * 获取类名
+     * @access public
+     * @return string
      */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
+    public function getClass()
+    {
+        return $this->class;
+    }
 }

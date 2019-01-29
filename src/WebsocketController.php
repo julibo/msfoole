@@ -9,29 +9,39 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+abstract class WebsocketController
 {
     /**
-     * 初始化工程
+     * 用户标识
+     * @var
      */
-    public function init();
+    protected $token;
 
     /**
-     * 进程配置
+     * 当前用户
+     * @var
      */
-    public function configure();
+    protected $user;
 
     /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
+     * 请求参数
+     * @var
      */
-    public function execute(InputInterface $input, OutputInterface $output);
+    protected $params;
+
+    /**
+     * 初始化方法
+     * @param $token
+     * @param $user
+     * @param $params
+     */
+    final public function init(string $token, object $user, array $params)
+    {
+        $this->token = $token;
+        $this->user = $user;
+        $this->params = $params;
+    }
 
 }

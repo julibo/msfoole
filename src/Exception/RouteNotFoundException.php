@@ -9,29 +9,12 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole\Exception;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+class RouteNotFoundException extends HttpException
 {
-    /**
-     * 初始化工程
-     */
-    public function init();
-
-    /**
-     * 进程配置
-     */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
+    public function __construct()
+    {
+        parent::__construct(404, 'Route Not Found');
+    }
 }

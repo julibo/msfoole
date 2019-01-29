@@ -9,29 +9,13 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+// 加载基础文件
+require __DIR__ . '/base.php';
 
-interface Console
-{
-    /**
-     * 初始化工程
-     */
-    public function init();
-
-    /**
-     * 进程配置
-     */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
-}
+$command = new Commands\InitialServer('msfoole');
+$application = new \Symfony\Component\Console\Application();
+$application->add($command);
+$application->setDefaultCommand('msfoole', true);
+$application->run();

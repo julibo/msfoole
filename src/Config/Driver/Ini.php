@@ -9,29 +9,23 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole\Config\Driver;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+class Ini
 {
-    /**
-     * 初始化工程
-     */
-    public function init();
+    protected $config;
 
-    /**
-     * 进程配置
-     */
-    public function configure();
+    public function __construct($config)
+    {
+        $this->config = $config;
+    }
 
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
+    public function parse()
+    {
+        if (is_file($this->config)) {
+            return parse_ini_file($this->config, false, INI_SCANNER_TYPED);
+        } else {
+            return parse_ini_string($this->config);
+        }
+    }
 }

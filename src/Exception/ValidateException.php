@@ -9,29 +9,26 @@
 // | Author: carson <yuzhanwei@aliyun.com>
 // +----------------------------------------------------------------------
 
-namespace Julibo\Msfoole\Interfaces;
+namespace Julibo\Msfoole\Exception;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+class ValidateException extends \RuntimeException
 {
-    /**
-     * 初始化工程
-     */
-    public function init();
+    protected $error;
+
+    public function __construct($error, $code = 0)
+    {
+        $this->error   = $error;
+        $this->message = is_array($error) ? implode("\n\r", $error) : $error;
+        $this->code    = $code;
+    }
 
     /**
-     * 进程配置
+     * 获取验证错误信息
+     * @access public
+     * @return array|string
      */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return mixed
-     */
-    public function execute(InputInterface $input, OutputInterface $output);
-
+    public function getError()
+    {
+        return $this->error;
+    }
 }

@@ -11,27 +11,20 @@
 
 namespace Julibo\Msfoole\Interfaces;
 
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-
-interface Console
+abstract class Process
 {
     /**
-     * 初始化工程
-     */
-    public function init();
-
-    /**
-     * 进程配置
-     */
-    public function configure();
-
-    /**
-     * 进程执行
-     * @param InputInterface $input
-     * @param OutputInterface $output
+     * 进程初始化
      * @return mixed
      */
-    public function execute(InputInterface $input, OutputInterface $output);
+    abstract public static function init();
 
+    /**
+     * 进程入口
+     * @return mixed
+     */
+    public static function main()
+    {
+        static::init();
+    }
 }
