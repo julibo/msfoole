@@ -11,7 +11,7 @@
 
 namespace Julibo\Msfoole;
 
-use Redis;
+use Predis\Client as RedisClient;
 
 class RedisDriver
 {
@@ -26,7 +26,7 @@ class RedisDriver
     private $retryTimes = 5;
 
     /**
-     * @var Redis
+     * @var RedisClient
      */
     private $redis;
 
@@ -35,14 +35,13 @@ class RedisDriver
      * @var array
      */
     private $config = [
-        'host'       => '127.0.0.1',
-        'port'       => 6379,
-        'password'   => '',
-        'db'     => 0,
-        'timeout'    => 0,
-        'expire'     => 0,
-        'prefix'     => '',
-        'serialize'  => true,
+        'scheme' => 'tcp',
+        'host' => '127.0.0.1',
+        'port' => 6379,
+        'password' => '',
+        'database' => 0,
+        'expire' => 3600,
+        'prefix' => '',
     ];
 
     /**
@@ -52,9 +51,11 @@ class RedisDriver
      */
     private function __construct(array $config = [])
     {
+        if (isset($config['db'])) {
+            $config['database'] = $config['db'];
+        }
         $this->config = array_merge($this->config, $config);
-        $this->redis = new Redis();
-        $this->connect($this->config);
+        $this->connect();
     }
 
     /**
@@ -62,7 +63,7 @@ class RedisDriver
      * @param array $config
      * @return RedisDriver
      */
-    public static function instance(array $config = []) : self
+    public static function instance(array $config = []): self
     {
         $drive = md5(serialize($config));
         if (empty(self::$instance[$drive])) {
@@ -75,14 +76,9 @@ class RedisDriver
      * 建立连接
      * @param array $config
      */
-    private function connect(array $config)
+    private function connect()
     {
-        $host     = $config['host'];
-        $port     = $config['port'];
-        $password = $config['password'];
-        $database = $config['db'];
-        $timeout = $config['timeout'];
-        $this->redis->connect($host, $port, $timeout);
+        $this->redis = new RedisClient($this->config);
         if (!empty($password)) {
             $this->redis->auth($password);
         }
@@ -94,7 +90,7 @@ class RedisDriver
      */
     public function ping()
     {
-        if ($this->redis->PING() == '+PONG')
+        if ($this->redis->ping() == '+PONG')
             return true;
         else
             return false;
@@ -121,8 +117,8 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                $result = $this->redis->SCAN($iterator, $pattern, $count);
-                return ['iterator'=>$iterator, 'result'=>$result];
+                $result = $this->redis->scan($iterator, $pattern, $count);
+                return ['iterator' => $iterator, 'result' => $result];
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();
@@ -162,7 +158,7 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                return $this->redis->GET($key);
+                return $this->redis->get($key);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();
@@ -185,12 +181,9 @@ class RedisDriver
             $retryTimes--;
             try {
                 if (is_null($expire)) {
-                    $expire = $this->config['expire'];
-                }
-                if ($expire) {
-                    return $this->redis->setex($key, $expire, $val);
-                } else {
                     return $this->redis->set($key, $val);
+                } else {
+                    return $this->redis->setex($key, $expire, $val);
                 }
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
@@ -211,7 +204,7 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                return $this->redis->DEL($key);
+                return $this->redis->del($key);
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();

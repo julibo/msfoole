@@ -36,7 +36,8 @@
         "topthink/think-cache": "dev-master",
         "topthink/think-container": "dev-master",
         "topthink/think-helper": "dev-master",
-        "topthink/think-validate": "dev-master"
+        "topthink/think-validate": "dev-master",
+        "predis/predis": "^2.1"
     },
     "require-dev" : {},
     "autoload": {
