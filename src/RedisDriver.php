@@ -155,7 +155,11 @@ class RedisDriver
         while ($retryTimes) {
             $retryTimes--;
             try {
-                return $this->redis->get($key);
+                $result = $this->redis->get($key);
+                if ($result == "{}" || is_numeric($result)) {
+                    continue;
+                }
+                return $result;
             } catch (\Throwable $e) {
                 if (strpos($e->getMessage(), 'Redis server went away') !== false) {
                     $this->connect();

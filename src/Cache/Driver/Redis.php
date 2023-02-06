@@ -53,6 +53,9 @@ class Redis extends Driver
         if (!is_scalar($value) && $this->options['serialize']) {
             $value = json_encode($value);
         }
+        if (empty($value) || $value == "{}" || is_numeric($value)) {
+            return;
+        }
         $key = $this->getCacheKey($name);
         $this->handler->set($key, $value, $expire);
     }
