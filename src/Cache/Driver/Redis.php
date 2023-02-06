@@ -40,12 +40,16 @@ class Redis extends Driver
 
     public function get($name, $default = null)
     {
-        $key = $this->getCacheKey($name);
-        $value = $this->handler->get($key);
-        if ($this->options['serialize'] && $this->isJson($value)) {
-            return json_decode($value, true);
+        if (!$this->has($name)) {
+            $value = $default;
+        } else {
+            $key = $this->getCacheKey($name);
+            $value = $this->handler->get($key);
+            if ($this->options['serialize'] && $this->isJson($value)) {
+                return json_decode($value, true);
+            }
+            return $value;
         }
-        return $value;
     }
 
     public function set($name, $value, $expire = null)
