@@ -39,7 +39,7 @@ class RedisDriver
         'host' => '127.0.0.1',
         'port' => 6379,
         'password' => '',
-        'database' => 0,
+        'db' => 0,
         'expire' => 3600,
         'prefix' => '',
     ];
@@ -51,9 +51,6 @@ class RedisDriver
      */
     private function __construct(array $config = [])
     {
-        if (isset($config['db'])) {
-            $config['database'] = $config['db'];
-        }
         $this->config = array_merge($this->config, $config);
         $this->connect();
     }
@@ -82,7 +79,7 @@ class RedisDriver
         if (!empty($password)) {
             $this->redis->auth($password);
         }
-        $this->redis->select($database);
+        $this->redis->select($this->config['db'] ?? 0);
     }
 
     /**

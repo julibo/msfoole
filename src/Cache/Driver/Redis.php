@@ -27,28 +27,23 @@ class Redis extends Driver
     public function has($name)
     {
         $key = $this->getCacheKey($name);
-        return $this->handler->EXISTS($key);
+        return $this->handler->exists($key);
     }
 
 
     public function getPeriod($name)
     {
         $key = $this->getCacheKey($name);
-        $deadline = $this->handler->TTL($key);
+        $deadline = $this->handler->ttl($key);
         return $deadline;
     }
 
     public function get($name, $default = null)
     {
-        if (!$this->has($name)) {
-            $value = $default;
-        } else {
-            $key = $this->getCacheKey($name);
-            $value = $this->handler->get($key);
-            $arrValue = Helper::isJson($value, true);
-            if ($this->options['serialize'] && $arrValue) {
-                $value = $arrValue;
-            }
+        $key = $this->getCacheKey($name);
+        $value = $this->handler->get($key);
+        if ($this->options['serialize'] && $this->isJson($value)) {
+            return json_decode($value, true);
         }
         return $value;
     }
@@ -56,7 +51,7 @@ class Redis extends Driver
     public function set($name, $value, $expire = null)
     {
         if (!is_scalar($value) && $this->options['serialize']) {
-            $value = json_encode($value, JSON_UNESCAPED_UNICODE);
+            $value = json_encode($value);
         }
         $key = $this->getCacheKey($name);
         $this->handler->set($key, $value, $expire);

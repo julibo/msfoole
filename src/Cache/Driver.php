@@ -124,5 +124,15 @@ abstract class Driver
     {
         return $this->handler;
     }
+
+    /**
+     * @param $string
+     * @return bool
+     */
+    protected function isJson($string)
+    {
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
+    }
 }
 
