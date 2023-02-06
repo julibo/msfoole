@@ -156,7 +156,7 @@ class RedisDriver
             $retryTimes--;
             try {
                 $result = $this->redis->get($key);
-                if ($result == "{}" || is_numeric($result)) {
+                if ($result == "{}" || is_numeric($result) || is_object($result)) {
                     continue;
                 }
                 return $result;
