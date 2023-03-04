@@ -11,22 +11,13 @@
 
 namespace Julibo\Msfoole;
 
-use Predis\Client as RedisClient;
+use Swoole\Coroutine\Redis;
 
 class RedisDriver
 {
-    /**
-     * @var array
-     */
-    public static $instance = [];
 
     /**
-     * @var int
-     */
-    private $retryTimes = 5;
-
-    /**
-     * @var RedisClient
+     * @var Swoole\Coroutine\Redis
      */
     private $redis;
 
@@ -52,7 +43,6 @@ class RedisDriver
     private function __construct(array $config = [])
     {
         $this->config = array_merge($this->config, $config);
-        $this->connect();
     }
 
     /**
@@ -62,11 +52,7 @@ class RedisDriver
      */
     public static function instance(array $config = []): self
     {
-        $drive = md5(serialize($config));
-        if (empty(self::$instance[$drive])) {
-            self::$instance[$drive] = new self($config);
-        }
-        return self::$instance[$drive];
+        return new self($config);
     }
 
     /**
@@ -75,9 +61,10 @@ class RedisDriver
      */
     private function connect()
     {
-        $this->redis = new RedisClient($this->config);
-        if (!empty($password)) {
-            $this->redis->auth($password);
+        $this->redis = new Redis();
+        $this->redis->connect($this->config['host'], $this->config['port']);
+        if (!empty($this->config['password'])) {
+            $this->redis->auth($this->config['password']);
         }
         $this->redis->select($this->config['db'] ?? 0);
     }
@@ -102,71 +89,13 @@ class RedisDriver
     }
 
     /**
-     * 遍历redis键值对
-     * @param string $pattern
-     * @param int $count
-     * @param null $iterator
-     * @return array|bool
-     */
-    public function scan($pattern = '', $count = 1000, $iterator = null)
-    {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                $result = $this->redis->scan($iterator, $pattern, $count);
-                return ['iterator' => $iterator, 'result' => $result];
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 清除所有缓存
-     * @return bool
-     */
-    public function clear()
-    {
-        $iterator = null;
-        $pattern = $this->config['prefix'] .  '*';
-        do {
-            $list = $this->scan($pattern, 1000, $iterator);
-            $iterator = $list['iterator'];
-            if (!empty($list['result'])) {
-                foreach ($list['result'] as $li) {
-                    $this->redis->del($li);
-                }
-            }
-        } while ($iterator != 0);
-        return true;
-    }
-
-    /**
      * @param $key
      * @return bool|string
      */
     public function get($key)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                $result = $this->redis->get($key);
-                if ($result == "{}" || is_object($result)) {
-                    continue;
-                }
-                return $result;
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
+        $this->connect();
+        return $this->redis->get($key);
     }
 
     /**
@@ -177,22 +106,12 @@ class RedisDriver
      */
     public function set($key, $val, $expire = null)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                if (is_null($expire)) {
-                    return $this->redis->set($key, $val);
-                } else {
-                    return $this->redis->setex($key, $expire, $val);
-                }
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
+        $this->connect();
+        if (is_null($expire)) {
+            return $this->redis->set($key, $val, $this->config['expire']);
+        } else {
+            return $this->redis->setEx($key, $expire, $val);
         }
-        return false;
     }
 
     /**
@@ -201,18 +120,8 @@ class RedisDriver
      */
     public function del($key)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                return $this->redis->del($key);
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
+        $this->connect();
+        return $this->redis->del($key);
     }
 
     /**
@@ -222,18 +131,8 @@ class RedisDriver
      */
     public function incrby($key, $step = 1)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                return $this->redis->incrby($key, $step);
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
+        $this->connect();
+        return $this->redis->incrBy($key, $step);
     }
 
     /**
@@ -243,18 +142,8 @@ class RedisDriver
      */
     public function decrby($key, $step = 1)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                return $this->redis->decrby($key, $step);
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
+        $this->connect();
+        return $this->redis->decrBy($key, $step);
     }
 
     /**
@@ -265,19 +154,8 @@ class RedisDriver
      */
     public function __call($name, $arguments)
     {
-        $retryTimes = $this->retryTimes;
-        while ($retryTimes) {
-            $retryTimes--;
-            try {
-                $result = $this->redis->$name(...$arguments);
-                return $result;
-            } catch (\Throwable $e) {
-                if (strpos($e->getMessage(), 'Redis server went away') !== false) {
-                    $this->connect();
-                }
-            }
-        }
-        return false;
+        $this->connect();
+        return $this->redis->$name(...$arguments);
     }
 
 }
